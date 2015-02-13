@@ -32,9 +32,12 @@ would become `this.Gui("Add", "Edit", "x0 y0 w100", "Text")`
 * When adding a Gui item that you will wish to interrogate later, store a reference, like so:  
 `this.myedit := this.Gui("Add", "Edit", "x0 y0 w100", "Text")`  
 * Do not pass *vLabels* or *gLabels* in Option strings  
-Set *gLabels* with `this.GuiContol("+g", <control>, <method>)`  
-eg `this.GuiContol("+g", this.myedit, this.EditChanged)`  
+* Use `GuiControl` method to manipulate GuiControls
+* Set *gLabels* with `this.GuiContol("+g", <control>, <method>)`  
+eg `this.GuiControl("+g", this.myedit, this.EditChanged)`  
 * *vLabels* are not required - Get / Set Control properties with <control>.value, eg `myedit.value`.  
+* To manipulate GuiControls, use `GuiControl()` eg:  
+`this.myedit.Guicontrol
 * Use `GuiOption` to set gui options, pass objects instead of HWNDs, eg:  
 ```
 this.ChildWindow := new CWindow(this, "-Border")
