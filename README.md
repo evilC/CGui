@@ -37,7 +37,7 @@ would become `this.Gui("Add", "Edit", "x0 y0 w100", "Text")`
 eg `this.GuiControl("+g", this.myedit, this.EditChanged)`  
 * *vLabels* are not required - Get / Set Control properties with <control>.value, eg `myedit.value`.  
 * Use `GuiOption` to set gui options, pass objects instead of HWNDs, eg:  
-```
+```AutoHotkey
 this.ChildWindow := new CWindow(this, "-Border")
 this.ChildWindow.GuiOption("+Parent", this)
 ```
