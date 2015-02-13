@@ -1,6 +1,9 @@
 ; REQUIRES AHK TEST BUILD from HERE: http://ahkscript.org/boards/viewtopic.php?f=24&t=5802
 ; Example Script using CGui ===============================================
 
+; Currently DOES NOT WORK.
+; Context bad when hotkey gets called? Bad bind?
+
 #SingleInstance force
 #include <CGui>
 #include sample inihandler.ahk
