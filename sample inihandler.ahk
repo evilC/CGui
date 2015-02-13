@@ -21,7 +21,10 @@ class CWindow extends _CGui {
 		; Set a GuiControl to be persistent.
 		; If called on a GuiControl, and there is an existing setting for it, set the control to the setting value
 		MakePersistent(Name){
-			this.GuiControl("+g", this, this.OnChange)
+			if (this._glabel = 0){
+				; If MakePersistent called before / without g-label, set OnChange g-label
+				this.GuiControl("+g", this, this.OnChange)
+			}
 			; IniRead
 			this._PersistenceName := Name
 			IniRead, val, % this._ScriptName, Settings, % this._PersistenceName, -1
