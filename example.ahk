@@ -3,6 +3,7 @@
 
 #SingleInstance force
 #include <CGui>
+#include sample inihandler.ahk
 
 MyClass := new MyClass()
 return
@@ -59,32 +60,5 @@ Class MyClass extends CWindow {
 	EditChanged(){
 		; Pull contents of edit box with .value
 		this.ToolTip(this.myedit.value, 2000)
-	}
-}
-
-; CGui Patch to implement desired Persistent settings technique ========================================================
-; OnChange is a class function that normally does nothing. The rest of this class is specific to your implementation
-
-; Implement GuiControl persistence with IniRead / IniWrite
-class CWindow extends _CGui {
-	Class CGuiControl extends _CGuiControl {
-		; hook into the onchange event
-		OnChange(){
-			; IniWrite
-			if (this._PersistenceName){
-				IniWrite, % this.value, % A_ScriptName ".ini", Settings, % this._PersistenceName
-			}
-		}
-		
-		; Set a GuiControl to be persistent.
-		; If called on a GuiControl, and there is an existing setting for it, set the control to the setting value
-		MakePersistent(Name){
-			; IniRead
-			this._PersistenceName := Name
-			IniRead, val, % A_ScriptName ".ini", Settings, % this._PersistenceName, -1
-			if (val != -1){
-				this.value := val
-			}
-		}
 	}
 }
