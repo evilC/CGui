@@ -46,7 +46,7 @@ this.ChildWindow.GuiOption("+Parent", this)
 * An object's parent is available via it's `_parent` property.
 
 ##Why?
-Because it allows you to write powerful, easy to understand code, like this - 15 commands to set up a Gui with an edit box that saves between runs, a couple of *gLabels* that call class methods, and not a *HWND* in sight.
+Because it allows you to write powerful, easy to understand code, like this - 15 commands to set up a Gui with an edit box that saves between runs, plus a couple of *gLabels* that call class methods, and not a *HWND* in sight.
 ```
 		; Call base method of class to create window
 		base.__New()
