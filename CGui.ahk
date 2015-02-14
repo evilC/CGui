@@ -20,7 +20,7 @@ Class _CGuiControl extends _CGui {
 		if (aParam = "value"){
 			; ToDo: What about other types?
 			;if (this._type = "listview"){
-			GuiControlGet, val, , % this._hwnd
+			GuiControlGet, val, % this._parent._hwnd ":" , % this._hwnd
 			return val
 		}
 	}
