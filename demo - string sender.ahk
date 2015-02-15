@@ -7,6 +7,9 @@
 #include <CGui>
 #include sample inihandler.ahk
 
+; Include skinning library if it exists.
+#include *i <USkin>
+
 MyClass := new MyClass()
 return
 
