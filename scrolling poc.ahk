@@ -9,40 +9,6 @@ SetBatchLines, -1
 
 mc := new MyClass()
 
-; -------------------------------------------------------------------------------------------------------------------
-; ChildGUI 1
-/*
-Gui, New, +hwndHGUI
-Gui, Margin, 20, 20
-I := 0
-Gui, Add, Text, w370 h20 0x200 Section, % "Edit " . ++I
-Gui, Add, Edit, xp y+0 wp r6
-Loop, 4 {
-	Gui, Add, Text, xp y+0 wp h20 0x200, % "Edit " . ++I
-	Gui, Add, Edit, xp y+0 wp r6
-}
-Gui, Add, Text, ys wp h20 0x200, % "Edit " . ++I
-Gui, Add, Edit, xp y+0 wp r6
-Loop, 4 {
-	Gui, Add, Text, xp y+0 wp h20 0x200, % "Edit " . ++I
-	Gui, Add, Edit, xp y+0 wp r6
-}
-
-; Create ScrollGUI1 with both horizontal and vertical scrollbars and mouse wheel capturing
-SG1 := New ScrollGUI(HGUI, 400, 400, "+Resize +MinSize +LabelGui1", 3, 3)
-; Show ScrollGUI1
-SG1.Show("ScrollGUI1 Title", "y0 xcenter")
-*/
-; -------------------------------------------------------------------------------------------------------------------
-Return
-
-/*
-; ----------------------------------------------------------------------------------------------------------------------
-Gui1Size:
-	If (A_EventInfo <> 1)
-		SG1.AdjustToParent()
-Return
-*/
 Esc::
 Gui1Close:
 Gui1Escape:
@@ -58,6 +24,8 @@ class MyClass {
 	MaxV := 200
 	LineH := Ceil(MaxH / 20)
 	LineV := Ceil(MaxV / 20)
+	
+	UseShift := False
 
 	__New(){
 		Gui, new, hwndhwnd
@@ -80,7 +48,8 @@ class MyClass {
 		lpsi.nPage := 100
 		this.SetScrollInfo_bak(this._hwnd, this.SB_VERT, lpsi)
 		
-		fn := bind(this.On_WM_Wheel, this)
+		;fn := bind(this.On_WM_Wheel, this)
+		fn := bind(this.Wheel, this)
 		OnMessage(this.WM_MOUSEWHEEL, fn)
 		
 		;fn := bind(this.On_WM_Scroll, this)
@@ -103,6 +72,7 @@ class MyClass {
 		return 0
 	}
 	
+	/*
 	On_WM_Wheel(wParam, lParam, msg, hwnd){
 		; Fix as per http://ahkscript.org/docs/commands/OnMessage.htm
 		if (A_PtrSize = 4 && wParam > 0x7FFFFFFF) {  ; Checking A_PtrSize ensures the script is 32-bit.
@@ -111,6 +81,7 @@ class MyClass {
 		si := wParam >> 16
 		;this.ScrollWindow(this._hwnd, 0, si)
 	}
+	*/
 	
 	; https://msdn.microsoft.com/en-us/library/windows/desktop/bb787595%28v=vs.85%29.aspx
 	SetScrollInfo_bak(hwnd, fnBar, ByRef lpsi, fRedraw := 1){
@@ -122,80 +93,124 @@ class MyClass {
 		; https://msdn.microsoft.com/en-us/library/windows/desktop/bb787591%28v=vs.85%29.aspx
 		return DllCall("User32.dll\ScrollWindow", "Ptr", hwnd, "Int", XAmount, "Int", YAmount, "Ptr", 0, "Ptr", 0)
 	}
-	
+	/*
    ; ===================================================================================================================
    GetScrollInfo(SB, ByRef SI) {
-      Static SI_SIZE := 28
-      Static SIF_ALL := 0x17
-      VarSetCapacity(SI, SI_SIZE, 0)
-      NumPut(SI_SIZE, SI, 0, "UInt")
-      NumPut(SIF_ALL, SI, 4, "UInt")
-      Return DllCall("User32.dll\GetScrollInfo", "Ptr", This._HWND, "Int", SB, "Ptr", &SI, "UInt")
+	  Static SI_SIZE := 28
+	  Static SIF_ALL := 0x17
+	  VarSetCapacity(SI, SI_SIZE, 0)
+	  NumPut(SI_SIZE, SI, 0, "UInt")
+	  NumPut(SIF_ALL, SI, 4, "UInt")
+	  Return DllCall("User32.dll\GetScrollInfo", "Ptr", This._HWND, "Int", SB, "Ptr", &SI, "UInt")
    }
+   */
+	GetScrollInfo(fnBar, ByRef lpsi){
+		; https://msdn.microsoft.com/en-us/library/windows/desktop/bb787583%28v=vs.85%29.aspx
+		lpsi := new _Struct(WinStructs.SCROLLINFO)
+		lpsi.cBsize := sizeof(WinStructs.SCROLLINFO)
+		lpsi.fMask := this.SIF_ALL
+		r := DllCall("User32.dll\GetScrollInfo", "Ptr", this._hwnd, "Int", fnBar, "Ptr", lpsi[], "UInt")
+		Return r
+	}
    ; ===================================================================================================================
    SetScrollInfo(SB, Values) {
-      Static SI_SIZE := 28
-      Static SIF := {Max: 0x01, Page: 0x02, Pos: 0x04}
-      Static Off := {Max: 12, Page: 16, Pos: 20}
-      Static SIF_DISABLENOSCROLL := 0x08
-      Mask := 0
-      VarSetCapacity(SI, SI_SIZE, 0)
-      NumPut(SI_SIZE, SI, 0, "UInt")
-      For Key, Value In Values {
-         If SIF.HasKey(Key) {
-            Mask |= SIF[Key]
-            NumPut(Value, SI, Off[Key], "UInt")
-         }
-      }
-      If (Mask) {
-         NumPut(Mask | SIF_DISABLENOSCROLL, SI, 4, "UInt")
-         Return DllCall("User32.dll\SetScrollInfo", "Ptr", This._HWND, "Int", SB, "Ptr", &SI, "UInt", 1, "UInt")
-      }
-      Return False
+	  Static SI_SIZE := 28
+	  Static SIF := {Max: 0x01, Page: 0x02, Pos: 0x04}
+	  Static Off := {Max: 12, Page: 16, Pos: 20}
+	  Static SIF_DISABLENOSCROLL := 0x08
+	  Mask := 0
+	  VarSetCapacity(SI, SI_SIZE, 0)
+	  NumPut(SI_SIZE, SI, 0, "UInt")
+	  For Key, Value In Values {
+		 If SIF.HasKey(Key) {
+			Mask |= SIF[Key]
+			NumPut(Value, SI, Off[Key], "UInt")
+		 }
+	  }
+	  If (Mask) {
+		 NumPut(Mask | SIF_DISABLENOSCROLL, SI, 4, "UInt")
+		 Return DllCall("User32.dll\SetScrollInfo", "Ptr", This._HWND, "Int", SB, "Ptr", &SI, "UInt", 1, "UInt")
+	  }
+	  Return False
    }
 	
-   Scroll(WP, LP, Msg, HWND) {
-      Static SB_LINEMINUS := 0, SB_LINEPLUS := 1, SB_PAGEMINUS := 2, SB_PAGEPLUS := 3, SB_THUMBTRACK := 5
+	Scroll(WP, LP, Msg, HWND) {
+		Static SB_LINEMINUS := 0, SB_LINEPLUS := 1, SB_PAGEMINUS := 2, SB_PAGEPLUS := 3, SB_THUMBTRACK := 5
+		Static WM_HSCROLL := 0x0114, WM_VSCROLL := 0x0115
+		If (LP <> 0) {
+			Return
+		}
+		SB := (Msg = WM_HSCROLL ? 0 : 1) ; SB_HORZ : SB_VERT
+		SC := WP & 0xFFFF
+		SD := (Msg = WM_HSCROLL ? This.LineH : This.LineV)
+		SI := 0
+		If (!This.GetScrollInfo(SB, SI)){
+			Return
+		}
+		PA := PN := SI.nPos
+		If (SC = SB_LINEMINUS)
+			PN := PA - SD
+		Else If (SC = SB_LINEPLUS)
+			PN := PA + SD
+		Else If (SC = SB_PAGEMINUS)
+			PN := PA - SI.nPage
+		Else If (SC = SB_PAGEPLUS)
+			PN := PA + SI.nPage
+		Else If (SC = SB_THUMBTRACK)
+			PN := SI.nTrackPos
+		If (PA = PN) {
+			Return 0
+		}
+		This.SetScrollInfo(SB, {Pos: PN})
+		This.GetScrollInfo(SB, SI)
+		PN := SI.nPos
+		If (SB = 0)
+			This.PosH := PN
+		Else
+			This.PosV := PN
+		If (PA <> PN) {
+			HS := VS := 0
+		}
+		If (Msg = WM_HSCROLL) {
+			HS := PA - PN
+		} Else {
+			VS := PA - PN
+			DllCall("User32.dll\ScrollWindow", "Ptr", This._HWND, "Int", HS, "Int", VS, "Ptr", 0, "Ptr", 0)
+		}
+		Return 0
+   }
+   
+   On_WM_Wheel(LP, Msg, H) {
+	SoundBeep
+      Static MK_CONTROL := 0x0008
+      Static MK_SHIFT := 0x0004
       Static WM_HSCROLL := 0x0114, WM_VSCROLL := 0x0115
-      If (LP <> 0) {
-         Return
-		}
-      SB := (Msg = WM_HSCROLL ? 0 : 1) ; SB_HORZ : SB_VERT
-      SC := WP & 0xFFFF
-      SD := (Msg = WM_HSCROLL ? This.LineH : This.LineV)
-      SI := 0
-      If (!This.GetScrollInfo(SB, SI)){
-         Return
-		}
-      PA := PN := NumGet(SI, 20, "Int")
-      If (SC = SB_LINEMINUS)
-         PN := PA - SD
-      Else If (SC = SB_LINEPLUS)
-         PN := PA + SD
-      Else If (SC = SB_PAGEMINUS)
-         PN := PA - NumGet(SI, 16, "UInt")
-      Else If (SC = SB_PAGEPLUS)
-         PN := PA + NumGet(SI, 16, "UInt")
-      Else If (SC = SB_THUMBTRACK)
-         PN := NumGet(SI, 24, "Int")
-      If (PA = PN)
-         Return 0
-      This.SetScrollInfo(SB, {Pos: PN})
-      This.GetScrollInfo(SB, SI)
-      PN := NumGet(SI, 20, "Int")
-      If (SB = 0)
-         This.PosH := PN
-      Else
-         This.PosV := PN
-      If (PA <> PN) {
-         HS := VS := 0
-         If (Msg = WM_HSCROLL)
-            HS := PA - PN
-         Else
-            VS := PA - PN
-         DllCall("User32.dll\ScrollWindow", "Ptr", This._HWND, "Int", HS, "Int", VS, "Ptr", 0, "Ptr", 0)
-      }
-      Return 0
+      Static WM_MOUSEWHEEL := 0x020A, WM_MOUSEHWHEEL := 0x020E
+      HWND := WinExist("A")
+	  /*
+      If ScrollGUI.Instances.HasKey(HWND) {
+         Instance := Object(ScrollGUI.Instances[HWND])
+         If (Instance.RequireCtrl && (This & MK_CONTROL)) || (!Instance.RequireCtrl && !(This & MK_CONTROL))
+            If (Instance.WheelH && (Msg = WM_MOUSEHWHEEL))
+            || (Instance.WheelH && ((Msg = WM_MOUSEWHEEL) && Instance.UseShift && (This & MK_SHIFT)))
+            || (Instance.WheelV && (Msg = WM_MOUSEWHEEL))
+			*/
+               ;Return Instance.Wheel(This, LP, Msg, HWND)
+               Return this.Wheel(This, LP, Msg, HWND)
+      ;}
+   }
+   
+   Wheel(WP, LP, Msg, H) {
+	  Static MK_SHIFT := 0x0004
+	  Static SB_LINEMINUS := 0, SB_LINEPLUS := 1
+	  Static WM_MOUSEWHEEL := 0x020A, WM_MOUSEHWHEEL := 0x020E
+	  Static WM_HSCROLL := 0x0114, WM_VSCROLL := 0x0115
+	  If (Msg = WM_MOUSEWHEEL) && This.UseShift && (WP & MK_SHIFT)
+		 Msg := WM_MOUSEHWHEEL
+	  MSG := (Msg = WM_MOUSEWHEEL ? WM_VSCROLL : WM_HSCROLL)
+	  SB := ((WP >> 16) > 0x7FFF) || (WP < 0) ? SB_LINEPLUS : SB_LINEMINUS
+	  ;MsgBox % "sb: " sb ", msg: " msg ", h: " h
+	  Return This.Scroll(SB, 0, MSG, H)
    }
 }
 
