@@ -22,8 +22,8 @@ class MyClass {
 
 	MaxH := 200
 	MaxV := 200
-	LineH := Ceil(MaxH / 20)
-	LineV := Ceil(MaxV / 20)
+	LineH := Ceil(this.MaxH / 20)
+	LineV := Ceil(this.MaxV / 20)
 	
 	UseShift := False
 
@@ -50,11 +50,9 @@ class MyClass {
 		;this.SetScrollInfo(this._hwnd, this.SB_VERT, lpsi)
 		this.SetScrollInfo(this.SB_VERT, lpsi)
 		
-		;fn := bind(this.On_WM_Wheel, this)
 		fn := bind(this.Wheel, this)
 		OnMessage(this.WM_MOUSEWHEEL, fn)
 		
-		;fn := bind(this.On_WM_Scroll, this)
 		fn := bind(this.Scroll, this)
 		OnMessage(this.WM_VSCROLL, fn)
 	}
@@ -62,7 +60,7 @@ class MyClass {
 	On_WM_Scroll(wParam, lParam, msg, hwnd){
 		; WM_VSCROLL https://msdn.microsoft.com/en-gb/library/windows/desktop/bb787577(v=vs.85).aspx
 		hw := wParam >> 16
-		ToolTip % hw
+		;ToolTip % hw
 		
 		lpsi := new _Struct(WinStructs.SCROLLINFO)
 		lpsi.cBsize := sizeof(WinStructs.SCROLLINFO)
@@ -75,17 +73,6 @@ class MyClass {
 		return 0
 	}
 	
-	/*
-	On_WM_Wheel(wParam, lParam, msg, hwnd){
-		; Fix as per http://ahkscript.org/docs/commands/OnMessage.htm
-		if (A_PtrSize = 4 && wParam > 0x7FFFFFFF) {  ; Checking A_PtrSize ensures the script is 32-bit.
-			wParam := -(~wParam) - 1
-		}
-		si := wParam >> 16
-		;this.ScrollWindow(this._hwnd, 0, si)
-	}
-	*/
-
 	GetScrollInfo(fnBar, ByRef lpsi){
 		; https://msdn.microsoft.com/en-us/library/windows/desktop/bb787583%28v=vs.85%29.aspx
 		lpsi := new _Struct(WinStructs.SCROLLINFO)
@@ -144,6 +131,7 @@ class MyClass {
 	*/
 	
 	Scroll(WP, LP, Msg, HWND) {
+		;ToolTip, % "wp: " WP ", lp: " LP ", msg: " msg ", h: " hwnd
 		Static SB_LINEMINUS := 0, SB_LINEPLUS := 1, SB_PAGEMINUS := 2, SB_PAGEPLUS := 3, SB_THUMBTRACK := 5
 		Static WM_HSCROLL := 0x0114, WM_VSCROLL := 0x0115
 		If (LP <> 0) {
@@ -157,17 +145,22 @@ class MyClass {
 			Return
 		}
 		PA := PN := SI.nPos
-		If (SC = SB_LINEMINUS)
+		;MsgBox % pa ", " sc
+		If (SC = SB_LINEMINUS) {
+			;MsgBox % "pn: " PN ", pa: " pa ", lineh: " This.LineH ", linev:" this.LineV
 			PN := PA - SD
-		Else If (SC = SB_LINEPLUS)
+		
+		} Else If (SC = SB_LINEPLUS) {
+			;MsgBox % "pn: " PN ", pa: " pa ", lineh: " This.LineH ", linev:" this.LineV
 			PN := PA + SD
-		Else If (SC = SB_PAGEMINUS)
+		} Else If (SC = SB_PAGEMINUS)
 			PN := PA - SI.nPage
 		Else If (SC = SB_PAGEPLUS)
 			PN := PA + SI.nPage
 		Else If (SC = SB_THUMBTRACK)
 			PN := SI.nTrackPos
 		If (PA = PN) {
+			;SoundBeep
 			Return 0
 		}
 		
@@ -192,42 +185,26 @@ class MyClass {
 		} Else {
 			VS := PA - PN
 			this.ScrollWindow(HS,VS)
+			;ToolTip % "HS: " hs ", VS: " vs
 		}
 		Return 0
    }
-   
-   On_WM_Wheel(LP, Msg, H) {
-	SoundBeep
-      Static MK_CONTROL := 0x0008
-      Static MK_SHIFT := 0x0004
-      Static WM_HSCROLL := 0x0114, WM_VSCROLL := 0x0115
-      Static WM_MOUSEWHEEL := 0x020A, WM_MOUSEHWHEEL := 0x020E
-      HWND := WinExist("A")
-	  /*
-      If ScrollGUI.Instances.HasKey(HWND) {
-         Instance := Object(ScrollGUI.Instances[HWND])
-         If (Instance.RequireCtrl && (This & MK_CONTROL)) || (!Instance.RequireCtrl && !(This & MK_CONTROL))
-            If (Instance.WheelH && (Msg = WM_MOUSEHWHEEL))
-            || (Instance.WheelH && ((Msg = WM_MOUSEWHEEL) && Instance.UseShift && (This & MK_SHIFT)))
-            || (Instance.WheelV && (Msg = WM_MOUSEWHEEL))
-			*/
-               ;Return Instance.Wheel(This, LP, Msg, HWND)
-               Return this.Wheel(This, LP, Msg, HWND)
-      ;}
-   }
-   
-   Wheel(WP, LP, Msg, H) {
-	  Static MK_SHIFT := 0x0004
-	  Static SB_LINEMINUS := 0, SB_LINEPLUS := 1
-	  Static WM_MOUSEWHEEL := 0x020A, WM_MOUSEHWHEEL := 0x020E
-	  Static WM_HSCROLL := 0x0114, WM_VSCROLL := 0x0115
-	  If (Msg = WM_MOUSEWHEEL) && This.UseShift && (WP & MK_SHIFT)
-		 Msg := WM_MOUSEHWHEEL
-	  MSG := (Msg = WM_MOUSEWHEEL ? WM_VSCROLL : WM_HSCROLL)
-	  SB := ((WP >> 16) > 0x7FFF) || (WP < 0) ? SB_LINEPLUS : SB_LINEMINUS
-	  ;MsgBox % "sb: " sb ", msg: " msg ", h: " h
-	  Return This.Scroll(SB, 0, MSG, H)
-   }
+
+	Wheel(WP, LP, Msg, H) {
+		;SoundBeep
+		Static MK_SHIFT := 0x0004
+		Static SB_LINEMINUS := 0, SB_LINEPLUS := 1
+		Static WM_MOUSEWHEEL := 0x020A, WM_MOUSEHWHEEL := 0x020E
+		Static WM_HSCROLL := 0x0114, WM_VSCROLL := 0x0115
+		If (Msg = WM_MOUSEWHEEL) && This.UseShift && (WP & MK_SHIFT) {
+			Msg := WM_MOUSEHWHEEL
+		}
+		MSG := (Msg = WM_MOUSEWHEEL ? WM_VSCROLL : WM_HSCROLL)
+		SB := ((WP >> 16) > 0x7FFF) || (WP < 0) ? SB_LINEPLUS : SB_LINEMINUS
+		;ToolTip % "sb: " sb ", msg: " msg ", h: " h
+		;Return This.Scroll(SB, 0, MSG, H)
+		Return This.Scroll(sb, 0, MSG, H)
+	}
 }
 
 bind(fn, args*) {  ; bind v1.2
