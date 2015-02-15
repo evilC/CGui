@@ -50,18 +50,16 @@ class MyClass {
 		OnMessage(this.WM_VSCROLL, fn)
 		OnMessage(this.WM_HSCROLL, fn)
 		
-		fn := bind(this.OnSize, this)
-		;fn := bind(this.AdjustToParent, this)
+		;fn := bind(this.OnSize, this)
+		fn := bind(this.AdjustToParent, this)
 		OnMessage(0x0005, fn)
 	}
 	
 	AdjustToParent(){
 		WindowRECT := this.GetClientRect()
 		CanvasRECT := this.GetClientSize()
-		if (!this.Width || !this.Height){
-			Width := WindowRECT.Right
-			Height := WindowRECT.Bottom
-		}
+		Width := WindowRECT.Right
+		Height := WindowRECT.Bottom
 		If (A_EventInfo <> 1) {
 			SH := SV := 0
 			If This.ScrollH {
@@ -99,6 +97,7 @@ class MyClass {
 				}
 			}
 			if (SV || SH){
+				;MsgBox here
 				DllCall("User32.dll\ScrollWindow", "Ptr", This._HWND, "Int", SH, "Int", SV, "Ptr", 0, "Ptr", 0)
 				;return
 			}
