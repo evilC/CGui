@@ -184,16 +184,16 @@ class _CScrollGui {
 		}
 		DetectHiddenWindows, %DHW%
 		If (LH <> "") {
-			VarSetCapacity(POINT, 8, 0)
-			NumPut(LH, POINT, 0, "Int")
-			DllCall("ScreenToClient", "Ptr", this._HWND, "Ptr", &POINT)
-			LH := NumGet(POINT, 0, "Int")
+			POINT := new _Struct(WinStructs.POINT)
+			POINT.x := LH
+			DllCall("ScreenToClient", "Ptr", this._HWND, "Ptr", POINT[])
+			LH := POINT.x
 		}
 		If (TH <> "") {
-			VarSetCapacity(POINT, 8, 0)
-			NumPut(TH, POINT, 4, "Int")
-			DllCall("ScreenToClient", "Ptr", this._HWND, "Ptr", &POINT)
-			TH := NumGet(POINT, 4, "Int")
+			POINT := new _Struct(WinStructs.POINT)
+			POINT.y := TH
+			DllCall("ScreenToClient", "Ptr", this._HWND, "Ptr", POINT[])
+			TH := POINT.y
 		}
 		RECT := new _Struct(WinStructs.RECT)
 		RECT.Left := L
