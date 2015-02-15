@@ -38,17 +38,20 @@ class MyClass {
 		Gui, Show, w200 h200
 		
 		
-		this.GetClientRect(RECT)
-		This.AutoSize(this._hwnd, GuiW, GuiH)
+		WindowRECT := this.GetClientRect(WindowRECT)
+		;This.AutoSize(this._hwnd, GuiW, GuiH)
+		CanvasRECT := this.GetClientSize()
+		
 		lpsi := new _Struct(WinStructs.SCROLLINFO)
 		lpsi.cBsize := sizeof(WinStructs.SCROLLINFO)
 		lpsi.fMask := this.SIF_ALL
 		lpsi.nMin := 0
-		lpsi.nMax := GuiH
-		lpsi.nPage := RECT.Bottom
+		lpsi.nMax := CanvasRECT.Bottom
+		lpsi.nPage := WindowRECT.Bottom
 		this.SetScrollInfo(this.SB_VERT, lpsi)
-		lpsi.nMax := GuiW
-		lpsi.nPage := RECT.Right
+		
+		lpsi.nMax := CanvasRECT.Right
+		lpsi.nPage := WindowRECT.Right
 		this.SetScrollInfo(this.SB_HORZ, lpsi)
 		
 		fn := bind(this.Wheel, this)
@@ -58,26 +61,6 @@ class MyClass {
 		OnMessage(this.WM_VSCROLL, fn)
 		OnMessage(this.WM_HSCROLL, fn)
 	}
-	
-	/*
-	On_WM_Scroll(wParam, lParam, msg, hwnd){
-		; WM_VSCROLL https://msdn.microsoft.com/en-gb/library/windows/desktop/bb787577(v=vs.85).aspx
-		hw := wParam >> 16
-		;ToolTip % hw
-		
-		lpsi := new _Struct(WinStructs.SCROLLINFO)
-		lpsi.cBsize := sizeof(WinStructs.SCROLLINFO)
-		lpsi.fMask := this.SIF_POS
-		lpsi.nPos := hw
-		;this.SetScrollInfo(this._hwnd, this.SB_VERT, lpsi)
-		;this.SetScrollInfo(msg, lpsi)
-		MsgBox % msg
-		this.SetScrollInfo(msg, lpsi)
-		
-		;this.ScrollWindow(this._hwnd,0, -1)
-		return 0
-	}
-	*/
 	
 	GetScrollInfo(fnBar, ByRef lpsi){
 		; https://msdn.microsoft.com/en-us/library/windows/desktop/bb787583%28v=vs.85%29.aspx
@@ -101,11 +84,71 @@ class MyClass {
 		return DllCall("User32.dll\ScrollWindow", "Ptr", this._hwnd, "Int", XAmount, "Int", YAmount, "Ptr", 0, "Ptr", 0)
 	}
 
-	GetClientRect(ByRef lpRect){
+	; Returns a RECT describing the size of the window
+	GetClientRect(){
 		lpRect := new _Struct(WinStructs.RECT)
 		DllCall("User32.dll\GetClientRect", "Ptr", This._HWND, "Ptr", lpRect[])
+		return lpRect
 	}
 
+	; Returns a RECT encompassing all GuiControls and GUIs that are a child of this GUI
+	GetClientSize(){
+		DHW := A_DetectHiddenWindows
+      DetectHiddenWindows, On
+      VarSetCapacity(RECT, 16, 0)
+      Width := Height := 0
+      HWND := this._HWND
+      CMD := 5 ; GW_CHILD
+      L := T := R := B := LH := TH := ""
+      While (HWND := DllCall("GetWindow", "Ptr", HWND, "UInt", CMD, "UPtr")) && (CMD := 2) {
+         WinGetPos, X, Y, W, H, ahk_id %HWND%
+         W += X, H += Y
+         WinGet, Styles, Style, ahk_id %HWND%
+         If (Styles & 0x10000000) { ; WS_VISIBLE
+            If (L = "") || (X < L)
+               L := X
+            If (T = "") || (Y < T)
+               T := Y
+            If (R = "") || (W > R)
+               R := W
+            If (B = "") || (H > B)
+               B := H
+         }
+         Else {
+            If (LH = "") || (X < LH)
+               LH := X
+            If (TH = "") || (Y < TH)
+               TH := Y
+         }
+      }
+      DetectHiddenWindows, %DHW%
+      If (LH <> "") {
+         VarSetCapacity(POINT, 8, 0)
+         NumPut(LH, POINT, 0, "Int")
+         DllCall("ScreenToClient", "Ptr", this._HWND, "Ptr", &POINT)
+         LH := NumGet(POINT, 0, "Int")
+      }
+      If (TH <> "") {
+         VarSetCapacity(POINT, 8, 0)
+         NumPut(TH, POINT, 4, "Int")
+         DllCall("ScreenToClient", "Ptr", this._HWND, "Ptr", &POINT)
+         TH := NumGet(POINT, 4, "Int")
+      }
+      NumPut(L, RECT, 0, "Int"), NumPut(T, RECT,  4, "Int")
+      NumPut(R, RECT, 8, "Int"), NumPut(B, RECT, 12, "Int")
+      DllCall("MapWindowPoints", "Ptr", 0, "Ptr", this._HWND, "Ptr", &RECT, "UInt", 2)
+      Width := NumGet(RECT, 8, "Int") + (LH <> "" ? LH : NumGet(RECT, 0, "Int"))
+      Height := NumGet(RECT, 12, "Int") + (TH <> "" ? TH : NumGet(RECT,  4, "Int"))
+	  
+	  ret := new _Struct(WinStructs.RECT)
+	  ret.Right := Width
+	  ret.Bottom := Height
+	  ;MsgBox % ret.Bottom " = " Height
+	  return ret
+      ;Return True
+	}
+	
+	/*
    AdjustToParent(Width := 0, Height := 0) {
       If (Width = 0) || (Height = 0) {
          VarSetCapacity(RC, 16, 0)
@@ -113,7 +156,7 @@ class MyClass {
          Width := NumGet(RC, 8, "Int")
          Height := Numget(RC, 12, "Int")
       }
-	  MsgBox % "w:" Width ", h: " Height
+	  ;MsgBox % "w:" Width ", h: " Height
 	  return
       SH := SV := 0
       If This.ScrollH {
@@ -154,7 +197,7 @@ class MyClass {
          DllCall("User32.dll\ScrollWindow", "Ptr", This._HWND, "Int", SH, "Int", SV, "Ptr", 0, "Ptr", 0)
       Return True
    }
-
+	
    AutoSize(HGUI, ByRef Width, ByRef Height) {
       DHW := A_DetectHiddenWindows
       DetectHiddenWindows, On
@@ -202,8 +245,10 @@ class MyClass {
       DllCall("MapWindowPoints", "Ptr", 0, "Ptr", HGUI, "Ptr", &RECT, "UInt", 2)
       Width := NumGet(RECT, 8, "Int") + (LH <> "" ? LH : NumGet(RECT, 0, "Int"))
       Height := NumGet(RECT, 12, "Int") + (TH <> "" ? TH : NumGet(RECT,  4, "Int"))
+	  MsgBox % "AutoSize: " Height
       Return True
    }
+	*/
 	/*
    ; ===================================================================================================================
    GetScrollInfo(SB, ByRef SI) {
