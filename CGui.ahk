@@ -236,6 +236,11 @@ class _CScrollGui extends _CGui {
 		Static WM_HSCROLL := 0x0114, WM_VSCROLL := 0x0115
 		Static SIF_POS := 0x4
 		
+		; HotkeyIt Fix
+		If ((this._hwnd+0) != HWND){
+			return
+		}
+		
 		If (LP <> 0) {
 			Return
 		}
