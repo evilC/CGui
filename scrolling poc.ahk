@@ -8,11 +8,12 @@
 
 #include <_Struct>
 #include <WinStructs>
+;#include *i <SkinSharp>
 
 ;#Include Class_ScrollGUI.ahk
 SetBatchLines, -1
 
-mc := new MyClass()
+ScrollGui := new _CScrollGui()
 
 Esc::
 Gui1Close:
@@ -20,12 +21,11 @@ Gui1Escape:
 ExitApp
 ; ----------------------------------------------------------------------------------------------------------------------
 
-class MyClass {
-	Static SB_HORZ := 0, SB_VERT = 1, SIF_ALL := 0x17, SIF_DISABLENOSCROLL := 0x08, SIF_PAGE := 0x2, SIF_POS := 0x4, SIF_RANGE := 0x1, SIF_TRACKPOS := 0x10
-	Static WM_HSCROLL := 0x0114, WM_VSCROLL := 0x0115
-	Static WM_MOUSEWHEEL := 0x020A, WM_MOUSEHWHEEL := 0x020E
-
+class _CScrollGui {
 	__New(){
+		static WM_HSCROLL := 0x0114, WM_VSCROLL := 0x0115
+		static WM_MOUSEWHEEL := 0x020A, WM_MOUSEHWHEEL := 0x020E
+		
 		Gui, new, hwndhwnd +Resize
 		this._Scroll_H := 1
 		this._Scroll_V := 1
@@ -40,34 +40,36 @@ class MyClass {
 		
 		this.AdjustToChild()
 		
-		fn := bind(this.Wheel, this)
-		OnMessage(this.WM_MOUSEWHEEL, fn)
+		fn := bind(this._Wheel, this)
+		OnMessage(WM_MOUSEWHEEL, fn)
 		
-		fn := bind(this.Scroll, this)
-		OnMessage(this.WM_VSCROLL, fn)
-		OnMessage(this.WM_HSCROLL, fn)
+		fn := bind(this._Scroll, this)
+		OnMessage(WM_VSCROLL, fn)
+		OnMessage(WM_HSCROLL, fn)
 		
 		fn := bind(this.AdjustToParent, this)
 		OnMessage(0x0005, fn)
 	}
 	
 	AdjustToParent(){
-		WindowRECT := this.GetClientRect()
-		CanvasRECT := this.GetClientSize()
+		Static SB_HORZ := 0, SB_VERT = 1
+		static SIF_PAGE := 0x2
+		
+		WindowRECT := this._GetClientRect()
+		CanvasRECT := this._GetClientSize()
 		Width := WindowRECT.Right
 		Height := WindowRECT.Bottom
 		If (A_EventInfo <> 1) {
 			SH := SV := 0
 			If This._Scroll_H {
 				If (Width <> This._Scroll_Width) {
-					lpsi := new _Struct(WinStructs.SCROLLINFO)
-					lpsi.cBsize := sizeof(WinStructs.SCROLLINFO)
-					lpsi.fMask := this.SIF_PAGE
+					lpsi := this._BlankScrollInfo()
+					lpsi.fMask := SIF_PAGE
 					lpsi.nPage := Width + 1
-					This.SetScrollInfo(this.SB_HORZ, lpsi)
+					This._SetScrollInfo(SB_HORZ, lpsi)
 
 					This._Scroll_Width := Width
-					This.GetScrollInfo(this.SB_HORZ, SI)
+					This._GetScrollInfo(SB_HORZ, SI)
 					PosH := SI.nPos
 					SH := This._Scroll_PosH - PosH
 					This._Scroll_PosH := PosH
@@ -75,28 +77,30 @@ class MyClass {
 			}
 			If This._Scroll_V {
 				If (Height <> This._Scroll_Height) {
-					lpsi := new _Struct(WinStructs.SCROLLINFO)
-					lpsi.cbSize := sizeof(WinStructs.SCROLLINFO)
-					lpsi.fMask := this.SIF_PAGE
+					lpsi := this._BlankScrollInfo()
+					lpsi.fMask := SIF_PAGE
 					lpsi.nPage := Height + 1
-					This.SetScrollInfo(this.SB_VERT, lpsi)
+					This._SetScrollInfo(SB_VERT, lpsi)
 					
 					This._Scroll_Height := Height
-					This.GetScrollInfo(this.SB_VERT, SI)
+					This._GetScrollInfo(SB_VERT, SI)
 					PosV := SI.nPos
 					SV := This._Scroll_PosV - PosV
 					This._Scroll_PosV := PosV
 				}
 			}
 			if (SV || SH){
-				DllCall("User32.dll\ScrollWindow", "Ptr", This._HWND, "Int", SH, "Int", SV, "Ptr", 0, "Ptr", 0)
+				this._ScrollWindow(SH, SV)
 			}
 		}
 	}
 	
 	AdjustToChild(){
-		WindowRECT := this.GetClientRect()
-		CanvasRECT := this.GetClientSize()
+		Static SB_HORZ := 0, SB_VERT = 1
+		static SIF_ALL := 0x17
+		
+		WindowRECT := this._GetClientRect()
+		CanvasRECT := this._GetClientSize()
 		if (!this._Scroll_Width || !this._Scroll_Height){
 			Width := WindowRECT.Right
 			Height := WindowRECT.Bottom
@@ -106,51 +110,50 @@ class MyClass {
 		this.LineH := Ceil(this.MaxH / 20)
 		this.LineV := Ceil(this.MaxV / 20)
 		
-		lpsi := new _Struct(WinStructs.SCROLLINFO)
-		lpsi.cBsize := sizeof(WinStructs.SCROLLINFO)
-		lpsi.fMask := this.SIF_ALL
+		lpsi := this._BlankScrollInfo()
+		lpsi.fMask := SIF_ALL
 		
 		lpsi.nMin := 0
 		lpsi.nMax := CanvasRECT.Bottom
 		lpsi.nPage := WindowRECT.Bottom
-		this.SetScrollInfo(this.SB_VERT, lpsi)
+		this._SetScrollInfo(SB_VERT, lpsi)
 		
 		lpsi.nMax := CanvasRECT.Right
 		lpsi.nPage := WindowRECT.Right
-		this.SetScrollInfo(this.SB_HORZ, lpsi)
+		this._SetScrollInfo(SB_HORZ, lpsi)
 		
 		this._Scroll_Width := Width
 		this._Scroll_Height := Height
 	}
 	
-	GetScrollInfo(fnBar, ByRef lpsi){
+	_GetScrollInfo(fnBar, ByRef lpsi){
+		static SIF_ALL := 0x17
 		; https://msdn.microsoft.com/en-us/library/windows/desktop/bb787583%28v=vs.85%29.aspx
-		lpsi := new _Struct(WinStructs.SCROLLINFO)
-		lpsi.cBsize := sizeof(WinStructs.SCROLLINFO)
-		lpsi.fMask := this.SIF_ALL
+		lpsi := this._BlankScrollInfo()
+		lpsi.fMask := SIF_ALL
 		r := DllCall("User32.dll\GetScrollInfo", "Ptr", this._hwnd, "Int", fnBar, "Ptr", lpsi[], "UInt")
 		Return r
 	}
 
-	SetScrollInfo(fnBar, ByRef lpsi, fRedraw := 1){
+	_SetScrollInfo(fnBar, ByRef lpsi, fRedraw := 1){
 		; https://msdn.microsoft.com/en-us/library/windows/desktop/bb787595%28v=vs.85%29.aspx
 		return DllCall("User32.dll\SetScrollInfo", "Ptr", this._hwnd, "Int", fnBar, "Ptr", lpsi[], "UInt", fRedraw, "UInt")
 	}
 	
-	ScrollWindow(XAmount, YAmount){
+	_ScrollWindow(XAmount, YAmount){
 		; https://msdn.microsoft.com/en-us/library/windows/desktop/bb787591%28v=vs.85%29.aspx
 		return DllCall("User32.dll\ScrollWindow", "Ptr", this._hwnd, "Int", XAmount, "Int", YAmount, "Ptr", 0, "Ptr", 0)
 	}
 
 	; Returns a RECT describing the size of the window
-	GetClientRect(){
+	_GetClientRect(){
 		lpRect := new _Struct(WinStructs.RECT)
 		DllCall("User32.dll\GetClientRect", "Ptr", This._HWND, "Ptr", lpRect[])
 		return lpRect
 	}
 
 	; Returns a RECT encompassing all GuiControls and GUIs that are a child of this GUI
-	GetClientSize(){
+	_GetClientSize(){
 		DHW := A_DetectHiddenWindows
 		DetectHiddenWindows, On
 		VarSetCapacity(RECT, 16, 0)
@@ -205,10 +208,12 @@ class MyClass {
 	}
 	
 	
-	Scroll(WP, LP, Msg, HWND) {
+	_Scroll(WP, LP, Msg, HWND) {
 		;ToolTip, % "wp: " WP ", lp: " LP ", msg: " msg ", h: " hwnd
 		Static SB_LINEMINUS := 0, SB_LINEPLUS := 1, SB_PAGEMINUS := 2, SB_PAGEPLUS := 3, SB_THUMBTRACK := 5
 		Static WM_HSCROLL := 0x0114, WM_VSCROLL := 0x0115
+		Static SIF_POS := 0x4
+		
 		If (LP <> 0) {
 			Return
 		}
@@ -216,7 +221,7 @@ class MyClass {
 		SC := WP & 0xFFFF
 		SD := (Msg = WM_HSCROLL ? This.LineH : This.LineV)
 		SI := 0
-		If (!This.GetScrollInfo(SB, SI)){
+		If (!This._GetScrollInfo(SB, SI)){
 			Return
 		}
 		PA := PN := SI.nPos
@@ -235,13 +240,12 @@ class MyClass {
 			Return 0
 		}
 		
-		lpsi := new _Struct(WinStructs.SCROLLINFO)
-		lpsi.cBsize := sizeof(WinStructs.SCROLLINFO)
-		lpsi.fMask := this.SIF_POS
+		lpsi := this._BlankScrollInfo()
+		lpsi.fMask := SIF_POS
 		lpsi.nPos := PN
-		this.SetScrollInfo(SB, lpsi)
+		this._SetScrollInfo(SB, lpsi)
 		
-		This.GetScrollInfo(SB, SI)
+		This._GetScrollInfo(SB, SI)
 		PN := SI.nPos
 		If (SB = 0) {
 			This._Scroll_PosH := PN
@@ -256,11 +260,11 @@ class MyClass {
 		} Else {
 			VS := PA - PN
 		}
-		this.ScrollWindow(HS,VS)
+		this._ScrollWindow(HS,VS)
 		Return 0
    }
 
-	Wheel(WP, LP, Msg, H) {
+	_Wheel(WP, LP, Msg, H) {
 		Static MK_SHIFT := 0x0004
 		Static SB_LINEMINUS := 0, SB_LINEPLUS := 1
 		Static WM_MOUSEWHEEL := 0x020A, WM_MOUSEHWHEEL := 0x020E
@@ -270,7 +274,13 @@ class MyClass {
 		}
 		MSG := (Msg = WM_MOUSEWHEEL ? WM_VSCROLL : WM_HSCROLL)
 		SB := ((WP >> 16) > 0x7FFF) || (WP < 0) ? SB_LINEPLUS : SB_LINEMINUS
-		Return This.Scroll(sb, 0, MSG, H)
+		Return this._Scroll(sb, 0, MSG, H)
+	}
+	
+	_BlankScrollInfo(){
+		lpsi := new _Struct(WinStructs.SCROLLINFO)
+		lpsi.cBsize := sizeof(WinStructs.SCROLLINFO)
+		return lpsi
 	}
 }
 
