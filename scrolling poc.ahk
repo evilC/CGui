@@ -41,7 +41,7 @@ class MyClass {
 		}  
 		Gui, Show, w200 h200
 		
-		this.OnSize()
+		this.AdjustToChild()
 		
 		fn := bind(this.Wheel, this)
 		OnMessage(this.WM_MOUSEWHEEL, fn)
@@ -97,14 +97,12 @@ class MyClass {
 				}
 			}
 			if (SV || SH){
-				;MsgBox here
 				DllCall("User32.dll\ScrollWindow", "Ptr", This._HWND, "Int", SH, "Int", SV, "Ptr", 0, "Ptr", 0)
-				;return
 			}
 		}
 	}
 	
-	OnSize(){
+	AdjustToChild(){
 		WindowRECT := this.GetClientRect()
 		CanvasRECT := this.GetClientSize()
 		if (!this.Width || !this.Height){
