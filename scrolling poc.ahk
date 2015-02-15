@@ -25,38 +25,41 @@ class MyClass {
 	LineH := Ceil(this.MaxH / 20)
 	LineV := Ceil(this.MaxV / 20)
 	
+	ScrollH := 1, ScrollV := 1
 	UseShift := False
 
 	__New(){
 		Gui, new, hwndhwnd
 		this._hwnd := hwnd
-		Loop 10 {
-			Gui, Add, Text,, Test
+		Loop 20 {
+			x := (A_Index -1) * 20
+			Gui, Add, Text, x%x%, Test %A_Index%
 		}  
 		Gui, Show, w200 h200
+		
+		
+		this.GetClientRect(RECT)
+		This.AutoSize(this._hwnd, GuiW, GuiH)
 		lpsi := new _Struct(WinStructs.SCROLLINFO)
 		lpsi.cBsize := sizeof(WinStructs.SCROLLINFO)
-		lpsi.fMask := this.SIF_RANGE
+		lpsi.fMask := this.SIF_ALL
 		lpsi.nMin := 0
-		lpsi.nMax := 200
-		
-		;this.SetScrollInfo(this._hwnd, this.SB_VERT, lpsi)
+		lpsi.nMax := GuiH
+		lpsi.nPage := RECT.Bottom
 		this.SetScrollInfo(this.SB_VERT, lpsi)
-		
-		lpsi := new _Struct(WinStructs.SCROLLINFO)
-		lpsi.cBsize := sizeof(WinStructs.SCROLLINFO)
-		lpsi.fMask := this.SIF_PAGE
-		lpsi.nPage := 100
-		;this.SetScrollInfo(this._hwnd, this.SB_VERT, lpsi)
-		this.SetScrollInfo(this.SB_VERT, lpsi)
+		lpsi.nMax := GuiW
+		lpsi.nPage := RECT.Right
+		this.SetScrollInfo(this.SB_HORZ, lpsi)
 		
 		fn := bind(this.Wheel, this)
 		OnMessage(this.WM_MOUSEWHEEL, fn)
 		
 		fn := bind(this.Scroll, this)
 		OnMessage(this.WM_VSCROLL, fn)
+		OnMessage(this.WM_HSCROLL, fn)
 	}
 	
+	/*
 	On_WM_Scroll(wParam, lParam, msg, hwnd){
 		; WM_VSCROLL https://msdn.microsoft.com/en-gb/library/windows/desktop/bb787577(v=vs.85).aspx
 		hw := wParam >> 16
@@ -67,11 +70,14 @@ class MyClass {
 		lpsi.fMask := this.SIF_POS
 		lpsi.nPos := hw
 		;this.SetScrollInfo(this._hwnd, this.SB_VERT, lpsi)
-		this.SetScrollInfo(this.SB_VERT, lpsi)
+		;this.SetScrollInfo(msg, lpsi)
+		MsgBox % msg
+		this.SetScrollInfo(msg, lpsi)
 		
 		;this.ScrollWindow(this._hwnd,0, -1)
 		return 0
 	}
+	*/
 	
 	GetScrollInfo(fnBar, ByRef lpsi){
 		; https://msdn.microsoft.com/en-us/library/windows/desktop/bb787583%28v=vs.85%29.aspx
@@ -94,6 +100,110 @@ class MyClass {
 		; https://msdn.microsoft.com/en-us/library/windows/desktop/bb787591%28v=vs.85%29.aspx
 		return DllCall("User32.dll\ScrollWindow", "Ptr", this._hwnd, "Int", XAmount, "Int", YAmount, "Ptr", 0, "Ptr", 0)
 	}
+
+	GetClientRect(ByRef lpRect){
+		lpRect := new _Struct(WinStructs.RECT)
+		DllCall("User32.dll\GetClientRect", "Ptr", This._HWND, "Ptr", lpRect[])
+	}
+
+   AdjustToParent(Width := 0, Height := 0) {
+      If (Width = 0) || (Height = 0) {
+         VarSetCapacity(RC, 16, 0)
+         DllCall("User32.dll\GetClientRect", "Ptr", This._HWND, "Ptr", &RC)
+         Width := NumGet(RC, 8, "Int")
+         Height := Numget(RC, 12, "Int")
+      }
+	  MsgBox % "w:" Width ", h: " Height
+	  return
+      SH := SV := 0
+      If This.ScrollH {
+         If (Width <> This.Width) {
+            ;This.SetScrollInfo(0, {Page: Width + 1})
+			lpsi := new _Struct(WinStructs.SCROLLINFO)
+			lpsi.cBsize := sizeof(WinStructs.SCROLLINFO)
+			lpsi.fMask := this.SIF_PAGE
+			lpsi.nPage := Width + 1
+			this.SetScrollInfo(SB, lpsi)
+
+            This.Width := Width
+            This.GetScrollInfo(0, SI)
+            ;PosH := NumGet(SI, 20, "Int")
+            PosH := SI.nPos
+            SH := This.PosH - PosH
+            This.PosH := PosH
+         }
+      }
+      If This.ScrollV {
+         If (Height <> This.Height) {
+            ;This.SetScrollInfo(1, {Page: Height + 1})
+			lpsi := new _Struct(WinStructs.SCROLLINFO)
+			lpsi.cBsize := sizeof(WinStructs.SCROLLINFO)
+			lpsi.fMask := this.SIF_PAGE
+			lpsi.nPage := Height + 1
+			this.SetScrollInfo(SB, lpsi)
+
+            This.Height := Height
+            This.GetScrollInfo(1, SI)
+            ;PosV := NumGet(SI, 20, "Int")
+            PosV := SI.nPos
+            SV := This.PosV - PosV
+            This.PosV := PosV
+         }
+      }
+      If (SH) || (SV)
+         DllCall("User32.dll\ScrollWindow", "Ptr", This._HWND, "Int", SH, "Int", SV, "Ptr", 0, "Ptr", 0)
+      Return True
+   }
+
+   AutoSize(HGUI, ByRef Width, ByRef Height) {
+      DHW := A_DetectHiddenWindows
+      DetectHiddenWindows, On
+      VarSetCapacity(RECT, 16, 0)
+      Width := Height := 0
+      HWND := HGUI
+      CMD := 5 ; GW_CHILD
+      L := T := R := B := LH := TH := ""
+      While (HWND := DllCall("GetWindow", "Ptr", HWND, "UInt", CMD, "UPtr")) && (CMD := 2) {
+         WinGetPos, X, Y, W, H, ahk_id %HWND%
+         W += X, H += Y
+         WinGet, Styles, Style, ahk_id %HWND%
+         If (Styles & 0x10000000) { ; WS_VISIBLE
+            If (L = "") || (X < L)
+               L := X
+            If (T = "") || (Y < T)
+               T := Y
+            If (R = "") || (W > R)
+               R := W
+            If (B = "") || (H > B)
+               B := H
+         }
+         Else {
+            If (LH = "") || (X < LH)
+               LH := X
+            If (TH = "") || (Y < TH)
+               TH := Y
+         }
+      }
+      DetectHiddenWindows, %DHW%
+      If (LH <> "") {
+         VarSetCapacity(POINT, 8, 0)
+         NumPut(LH, POINT, 0, "Int")
+         DllCall("ScreenToClient", "Ptr", HGUI, "Ptr", &POINT)
+         LH := NumGet(POINT, 0, "Int")
+      }
+      If (TH <> "") {
+         VarSetCapacity(POINT, 8, 0)
+         NumPut(TH, POINT, 4, "Int")
+         DllCall("ScreenToClient", "Ptr", HGUI, "Ptr", &POINT)
+         TH := NumGet(POINT, 4, "Int")
+      }
+      NumPut(L, RECT, 0, "Int"), NumPut(T, RECT,  4, "Int")
+      NumPut(R, RECT, 8, "Int"), NumPut(B, RECT, 12, "Int")
+      DllCall("MapWindowPoints", "Ptr", 0, "Ptr", HGUI, "Ptr", &RECT, "UInt", 2)
+      Width := NumGet(RECT, 8, "Int") + (LH <> "" ? LH : NumGet(RECT, 0, "Int"))
+      Height := NumGet(RECT, 12, "Int") + (TH <> "" ? TH : NumGet(RECT,  4, "Int"))
+      Return True
+   }
 	/*
    ; ===================================================================================================================
    GetScrollInfo(SB, ByRef SI) {
@@ -160,7 +270,6 @@ class MyClass {
 		Else If (SC = SB_THUMBTRACK)
 			PN := SI.nTrackPos
 		If (PA = PN) {
-			;SoundBeep
 			Return 0
 		}
 		
@@ -184,9 +293,8 @@ class MyClass {
 			HS := PA - PN
 		} Else {
 			VS := PA - PN
-			this.ScrollWindow(HS,VS)
-			;ToolTip % "HS: " hs ", VS: " vs
 		}
+		this.ScrollWindow(HS,VS)
 		Return 0
    }
 
