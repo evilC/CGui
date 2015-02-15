@@ -1,3 +1,8 @@
+; REQUIRES AHK TEST BUILD from HERE: http://ahkscript.org/boards/viewtopic.php?f=24&t=5802
+; DEPENDENCIES:
+; _Struct():  https://raw.githubusercontent.com/HotKeyIt/_Struct/master/_Struct.ahk - docs: http://www.autohotkey.net/~HotKeyIt/AutoHotkey/_Struct.htm
+; sizeof(): https://raw.githubusercontent.com/HotKeyIt/_Struct/master/sizeof.ahk - docs: http://www.autohotkey.net/~HotKeyIt/AutoHotkey/sizeof.htm
+; WinStructs: https://github.com/ahkscript/WinStructs
 #SingleInstance force
 #NoEnv
 
@@ -20,20 +25,12 @@ class MyClass {
 	Static WM_HSCROLL := 0x0114, WM_VSCROLL := 0x0115
 	Static WM_MOUSEWHEEL := 0x020A, WM_MOUSEHWHEEL := 0x020E
 
-	MaxH := 0
-	MaxV := 0
-	LineH := 0
-	LineV := 0
-	Width := 0
-	Height := 0
-	PosH := 0
-	PosV := 0
-	
-	ScrollH := 1, ScrollV := 1
-	UseShift := False
-
 	__New(){
 		Gui, new, hwndhwnd +Resize
+		this._Scroll_H := 1
+		this._Scroll_V := 1
+		this._Scroll_UseShift := False
+
 		this._hwnd := hwnd
 		Loop 20 {
 			x := (A_Index -1) * 20
@@ -50,7 +47,6 @@ class MyClass {
 		OnMessage(this.WM_VSCROLL, fn)
 		OnMessage(this.WM_HSCROLL, fn)
 		
-		;fn := bind(this.OnSize, this)
 		fn := bind(this.AdjustToParent, this)
 		OnMessage(0x0005, fn)
 	}
@@ -62,38 +58,34 @@ class MyClass {
 		Height := WindowRECT.Bottom
 		If (A_EventInfo <> 1) {
 			SH := SV := 0
-			If This.ScrollH {
-				If (Width <> This.Width) {
-					;This.SetScrollInfo(0, {Page: Width + 1})
+			If This._Scroll_H {
+				If (Width <> This._Scroll_Width) {
 					lpsi := new _Struct(WinStructs.SCROLLINFO)
 					lpsi.cBsize := sizeof(WinStructs.SCROLLINFO)
 					lpsi.fMask := this.SIF_PAGE
 					lpsi.nPage := Width + 1
 					This.SetScrollInfo(this.SB_HORZ, lpsi)
 
-					This.Width := Width
+					This._Scroll_Width := Width
 					This.GetScrollInfo(this.SB_HORZ, SI)
-					;PosH := NumGet(SI, 20, "Int")
 					PosH := SI.nPos
-					SH := This.PosH - PosH
-					This.PosH := PosH
+					SH := This._Scroll_PosH - PosH
+					This._Scroll_PosH := PosH
 				}
 			}
-			If This.ScrollV {
-				If (Height <> This.Height) {
-					;This.SetScrollInfo(1, {Page: Height + 1})
+			If This._Scroll_V {
+				If (Height <> This._Scroll_Height) {
 					lpsi := new _Struct(WinStructs.SCROLLINFO)
 					lpsi.cbSize := sizeof(WinStructs.SCROLLINFO)
 					lpsi.fMask := this.SIF_PAGE
 					lpsi.nPage := Height + 1
 					This.SetScrollInfo(this.SB_VERT, lpsi)
 					
-					This.Height := Height
+					This._Scroll_Height := Height
 					This.GetScrollInfo(this.SB_VERT, SI)
-					;PosV := NumGet(SI, 20, "Int")
 					PosV := SI.nPos
-					SV := This.PosV - PosV
-					This.PosV := PosV
+					SV := This._Scroll_PosV - PosV
+					This._Scroll_PosV := PosV
 				}
 			}
 			if (SV || SH){
@@ -105,7 +97,7 @@ class MyClass {
 	AdjustToChild(){
 		WindowRECT := this.GetClientRect()
 		CanvasRECT := this.GetClientSize()
-		if (!this.Width || !this.Height){
+		if (!this._Scroll_Width || !this._Scroll_Height){
 			Width := WindowRECT.Right
 			Height := WindowRECT.Bottom
 		}
@@ -127,8 +119,8 @@ class MyClass {
 		lpsi.nPage := WindowRECT.Right
 		this.SetScrollInfo(this.SB_HORZ, lpsi)
 		
-		this.Width := Width
-		this.Height := Height
+		this._Scroll_Width := Width
+		this._Scroll_Height := Height
 	}
 	
 	GetScrollInfo(fnBar, ByRef lpsi){
@@ -228,20 +220,17 @@ class MyClass {
 			Return
 		}
 		PA := PN := SI.nPos
-		;MsgBox % pa ", " sc
 		If (SC = SB_LINEMINUS) {
-			;MsgBox % "pn: " PN ", pa: " pa ", lineh: " This.LineH ", linev:" this.LineV
 			PN := PA - SD
-		
 		} Else If (SC = SB_LINEPLUS) {
-			;MsgBox % "pn: " PN ", pa: " pa ", lineh: " This.LineH ", linev:" this.LineV
 			PN := PA + SD
-		} Else If (SC = SB_PAGEMINUS)
+		} Else If (SC = SB_PAGEMINUS) {
 			PN := PA - SI.nPage
-		Else If (SC = SB_PAGEPLUS)
+		} Else If (SC = SB_PAGEPLUS) {
 			PN := PA + SI.nPage
-		Else If (SC = SB_THUMBTRACK)
+		} Else If (SC = SB_THUMBTRACK) {
 			PN := SI.nTrackPos
+		} 
 		If (PA = PN) {
 			Return 0
 		}
@@ -250,15 +239,15 @@ class MyClass {
 		lpsi.cBsize := sizeof(WinStructs.SCROLLINFO)
 		lpsi.fMask := this.SIF_POS
 		lpsi.nPos := PN
-		;this.SetScrollInfo(this._hwnd, SB, lpsi)
 		this.SetScrollInfo(SB, lpsi)
 		
 		This.GetScrollInfo(SB, SI)
 		PN := SI.nPos
-		If (SB = 0)
-			This.PosH := PN
-		Else
-			This.PosV := PN
+		If (SB = 0) {
+			This._Scroll_PosH := PN
+		} Else {
+			This._Scroll_PosV := PN
+		}
 		If (PA <> PN) {
 			HS := VS := 0
 		}
@@ -272,18 +261,15 @@ class MyClass {
    }
 
 	Wheel(WP, LP, Msg, H) {
-		;SoundBeep
 		Static MK_SHIFT := 0x0004
 		Static SB_LINEMINUS := 0, SB_LINEPLUS := 1
 		Static WM_MOUSEWHEEL := 0x020A, WM_MOUSEHWHEEL := 0x020E
 		Static WM_HSCROLL := 0x0114, WM_VSCROLL := 0x0115
-		If (Msg = WM_MOUSEWHEEL) && This.UseShift && (WP & MK_SHIFT) {
+		If (Msg = WM_MOUSEWHEEL) && This._Scroll_UseShift && (WP & MK_SHIFT) {
 			Msg := WM_MOUSEHWHEEL
 		}
 		MSG := (Msg = WM_MOUSEWHEEL ? WM_VSCROLL : WM_HSCROLL)
 		SB := ((WP >> 16) > 0x7FFF) || (WP < 0) ? SB_LINEPLUS : SB_LINEMINUS
-		;ToolTip % "sb: " sb ", msg: " msg ", h: " h
-		;Return This.Scroll(SB, 0, MSG, H)
 		Return This.Scroll(sb, 0, MSG, H)
 	}
 }
