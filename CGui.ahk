@@ -60,14 +60,14 @@ class _CScrollGui extends _CGui {
 		this.AdjustToChild()
 		
 		fn := bind(this._Wheel, this)
-		OnMessage(WM_MOUSEWHEEL, fn)
+		OnMessage(WM_MOUSEWHEEL, fn, 999)
 		
 		fn := bind(this._Scroll, this)
-		OnMessage(WM_VSCROLL, fn)
-		OnMessage(WM_HSCROLL, fn)
+		OnMessage(WM_VSCROLL, fn, 999)
+		OnMessage(WM_HSCROLL, fn, 999)
 		
 		fn := bind(this.AdjustToParent, this)
-		OnMessage(0x0005, fn)
+		OnMessage(0x0005, fn, 999)
 	}
 	
 	AdjustToParent(){

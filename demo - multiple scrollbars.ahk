@@ -29,10 +29,18 @@ Class MyClass extends CWindow {
 		Loop 20 {
 			this.ChildWindow1.Gui("Add", "Text", "Center xm w" this.GUI_WIDTH, "Text " A_Index)
 		}
-		this.ChildWindow1.Gui("Show", "x100 y100 w" this.GUI_WIDTH " h200")
+		this.ChildWindow1.Gui("Show", "x0 y0 w" this.GUI_WIDTH " h200")
 		this.ChildWindow1.AdjustToChild()
 		
-		this.Gui("Show", "w400 h400","Scroll Demo")
+		this.ChildWindow2 := new CWindow(this, "-Border").GuiOption("+Parent", this)
+		Loop 20 {
+			this.ChildWindow2.Gui("Add", "Text", "Center xm w" this.GUI_WIDTH, "Text " A_Index)
+		}
+		this.ChildWindow2.Gui("Show", "x290 y0 w" this.GUI_WIDTH " h200")
+		this.ChildWindow2.AdjustToChild()
+		
+		
+		this.Gui("Show", "w500 h210","Scroll Demo")
 	}
 	
 	SendMyString(){
