@@ -1,4 +1,43 @@
 ; REQUIRES AHK TEST BUILD from HERE: http://ahkscript.org/boards/viewtopic.php?f=24&t=5802
+; Example Script using CGui ===============================================
+; Shows how to make an app that sends a string from a text box in the gui when you hit a key
+; Text box contents are persistent across runs
+
+#SingleInstance force
+#include <_Struct>
+#include <WinStructs>
+;#include <CGui>
+;#include sample inihandler.ahk
+
+; Include skinning library if it exists.
+;#include *i <USkin>
+
+MyClass := new MyClass()
+return
+
+Esc::
+GuiClose:
+	ExitApp
+
+Class MyClass extends CWindow {
+	__New(){
+		base.__New(this, "+Resize")
+		this.GUI_WIDTH := 200
+		this.Gui("Margin",5,5)
+		Loop 20 {
+			this.Gui("Add", "Text", "Center xm w" this.GUI_WIDTH, "Text " A_Index)
+		}
+		
+		this.Gui("Show", "h200","Test")
+		this.AdjustToChild()
+	}
+	
+	SendMyString(){
+		Send % this.myedit.value
+	}
+}
+
+; REQUIRES AHK TEST BUILD from HERE: http://ahkscript.org/boards/viewtopic.php?f=24&t=5802
 
 ; CGui Library =================================================================================================
 ; A library 
@@ -432,4 +471,42 @@ class BoundFunc {
             return %fn%(args*)
         }
     }
+}
+
+; CGui Patch to implement desired Persistent settings technique ========================================================
+; OnChange is a class function that normally does nothing. The rest of this class is specific to your implementation
+
+; Implement GuiControl persistence with IniRead / IniWrite
+;class CWindow extends _CGui {
+class CWindow extends _CScrollGui {
+	Class CGuiControl extends _CGuiControl {
+		__New(aParams*){
+			base.__New(aParams*)
+			; Work out name of INI
+			SplitPath, A_ScriptName,,,,ScriptName
+			this._ScriptName .= ScriptName ".ini"
+		}
+		; hook into the onchange event
+		OnChange(){
+			; IniWrite
+			if (this._PersistenceName){
+				IniWrite, % this.value, % this._ScriptName, Settings, % this._PersistenceName
+			}
+		}
+		
+		; Set a GuiControl to be persistent.
+		; If called on a GuiControl, and there is an existing setting for it, set the control to the setting value
+		MakePersistent(Name){
+			if (this._glabel = 0){
+				; If MakePersistent called before / without g-label, set OnChange g-label
+				this.GuiControl("+g", this, this.OnChange)
+			}
+			; IniRead
+			this._PersistenceName := Name
+			IniRead, val, % this._ScriptName, Settings, % this._PersistenceName, -1
+			if (val != -1){
+				this.value := val
+			}
+		}
+	}
 }
