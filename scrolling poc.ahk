@@ -29,7 +29,7 @@ class MyClass {
 	UseShift := False
 
 	__New(){
-		Gui, new, hwndhwnd
+		Gui, new, hwndhwnd +Resize
 		this._hwnd := hwnd
 		Loop 20 {
 			x := (A_Index -1) * 20
@@ -37,14 +37,27 @@ class MyClass {
 		}  
 		Gui, Show, w200 h200
 		
+		this.OnSize()
 		
+		fn := bind(this.Wheel, this)
+		OnMessage(this.WM_MOUSEWHEEL, fn)
+		
+		fn := bind(this.Scroll, this)
+		OnMessage(this.WM_VSCROLL, fn)
+		OnMessage(this.WM_HSCROLL, fn)
+		
+		fn := bind(this.OnSize, this)
+		OnMessage(0x0005, fn)
+	}
+	
+	OnSize(){
 		WindowRECT := this.GetClientRect(WindowRECT)
-		;This.AutoSize(this._hwnd, GuiW, GuiH)
 		CanvasRECT := this.GetClientSize()
 		
 		lpsi := new _Struct(WinStructs.SCROLLINFO)
 		lpsi.cBsize := sizeof(WinStructs.SCROLLINFO)
 		lpsi.fMask := this.SIF_ALL
+		
 		lpsi.nMin := 0
 		lpsi.nMax := CanvasRECT.Bottom
 		lpsi.nPage := WindowRECT.Bottom
@@ -53,13 +66,6 @@ class MyClass {
 		lpsi.nMax := CanvasRECT.Right
 		lpsi.nPage := WindowRECT.Right
 		this.SetScrollInfo(this.SB_HORZ, lpsi)
-		
-		fn := bind(this.Wheel, this)
-		OnMessage(this.WM_MOUSEWHEEL, fn)
-		
-		fn := bind(this.Scroll, this)
-		OnMessage(this.WM_VSCROLL, fn)
-		OnMessage(this.WM_HSCROLL, fn)
 	}
 	
 	GetScrollInfo(fnBar, ByRef lpsi){
