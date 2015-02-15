@@ -156,7 +156,7 @@ class _CScrollGui {
 	_GetClientSize(){
 		DHW := A_DetectHiddenWindows
 		DetectHiddenWindows, On
-		VarSetCapacity(RECT, 16, 0)
+		;VarSetCapacity(RECT, 16, 0)
 		Width := Height := 0
 		HWND := this._HWND
 		CMD := 5 ; GW_CHILD
@@ -195,11 +195,14 @@ class _CScrollGui {
 			DllCall("ScreenToClient", "Ptr", this._HWND, "Ptr", &POINT)
 			TH := NumGet(POINT, 4, "Int")
 		}
-		NumPut(L, RECT, 0, "Int"), NumPut(T, RECT,  4, "Int")
-		NumPut(R, RECT, 8, "Int"), NumPut(B, RECT, 12, "Int")
-		DllCall("MapWindowPoints", "Ptr", 0, "Ptr", this._HWND, "Ptr", &RECT, "UInt", 2)
-		Width := NumGet(RECT, 8, "Int") + (LH <> "" ? LH : NumGet(RECT, 0, "Int"))
-		Height := NumGet(RECT, 12, "Int") + (TH <> "" ? TH : NumGet(RECT,  4, "Int"))
+		RECT := new _Struct(WinStructs.RECT)
+		RECT.Left := L
+		RECT.Right := R
+		RECT.Top := T
+		RECT.Bottom := B
+		DllCall("MapWindowPoints", "Ptr", 0, "Ptr", this._HWND, "Ptr", RECT[], "UInt", 2)
+		Width := RECT.Right + (LH <> "" ? LH : RECT.Left)
+		Height := RECT.Bottom + (TH <> "" ? TH : RECT.Top)
 
 		ret := new _Struct(WinStructs.RECT)
 		ret.Right := Width
