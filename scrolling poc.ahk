@@ -10,7 +10,6 @@
 #include <WinStructs>
 ;#include *i <SkinSharp>
 
-;#Include Class_ScrollGUI.ahk
 SetBatchLines, -1
 
 ScrollGui := new _CScrollGui()
@@ -26,7 +25,10 @@ class _CScrollGui {
 		static WM_HSCROLL := 0x0114, WM_VSCROLL := 0x0115
 		static WM_MOUSEWHEEL := 0x020A, WM_MOUSEHWHEEL := 0x020E
 		
-		Gui, new, hwndhwnd +Resize
+		Gui, new, hwndhParent
+		Gui, % hParent ":Show", w400 h400
+		
+		Gui, new, % "hwndhwnd -Border -Resize +Parent" hParent
 		this._Scroll_H := 1
 		this._Scroll_V := 1
 		this._Scroll_UseShift := False
@@ -36,7 +38,7 @@ class _CScrollGui {
 			x := (A_Index -1) * 20
 			Gui, Add, Text, x%x%, Test %A_Index%
 		}  
-		Gui, Show, w200 h200
+		Gui, Show, x100 y100 w200 h200
 		
 		this.AdjustToChild()
 		
