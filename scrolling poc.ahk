@@ -40,13 +40,15 @@ class MyClass {
 		lpsi.nMin := 0
 		lpsi.nMax := 200
 		
-		this.SetScrollInfo_bak(this._hwnd, this.SB_VERT, lpsi)
+		;this.SetScrollInfo(this._hwnd, this.SB_VERT, lpsi)
+		this.SetScrollInfo(this.SB_VERT, lpsi)
 		
 		lpsi := new _Struct(WinStructs.SCROLLINFO)
 		lpsi.cBsize := sizeof(WinStructs.SCROLLINFO)
 		lpsi.fMask := this.SIF_PAGE
 		lpsi.nPage := 100
-		this.SetScrollInfo_bak(this._hwnd, this.SB_VERT, lpsi)
+		;this.SetScrollInfo(this._hwnd, this.SB_VERT, lpsi)
+		this.SetScrollInfo(this.SB_VERT, lpsi)
 		
 		;fn := bind(this.On_WM_Wheel, this)
 		fn := bind(this.Wheel, this)
@@ -66,7 +68,8 @@ class MyClass {
 		lpsi.cBsize := sizeof(WinStructs.SCROLLINFO)
 		lpsi.fMask := this.SIF_POS
 		lpsi.nPos := hw
-		this.SetScrollInfo_bak(this._hwnd, this.SB_VERT, lpsi)
+		;this.SetScrollInfo(this._hwnd, this.SB_VERT, lpsi)
+		this.SetScrollInfo(this.SB_VERT, lpsi)
 		
 		;this.ScrollWindow(this._hwnd,0, -1)
 		return 0
@@ -82,16 +85,27 @@ class MyClass {
 		;this.ScrollWindow(this._hwnd, 0, si)
 	}
 	*/
-	
-	; https://msdn.microsoft.com/en-us/library/windows/desktop/bb787595%28v=vs.85%29.aspx
-	SetScrollInfo_bak(hwnd, fnBar, ByRef lpsi, fRedraw := 1){
-		return DllCall("User32.dll\SetScrollInfo", "Ptr", hwnd, "Int", fnBar, "Ptr", lpsi[], "UInt", fRedraw, "UInt")
+
+	GetScrollInfo(fnBar, ByRef lpsi){
+		; https://msdn.microsoft.com/en-us/library/windows/desktop/bb787583%28v=vs.85%29.aspx
+		lpsi := new _Struct(WinStructs.SCROLLINFO)
+		lpsi.cBsize := sizeof(WinStructs.SCROLLINFO)
+		lpsi.fMask := this.SIF_ALL
+		r := DllCall("User32.dll\GetScrollInfo", "Ptr", this._hwnd, "Int", fnBar, "Ptr", lpsi[], "UInt")
+		Return r
+	}
+
+	;SetScrollInfo(hwnd, fnBar, ByRef lpsi, fRedraw := 1){
+	SetScrollInfo(fnBar, ByRef lpsi, fRedraw := 1){
+		; https://msdn.microsoft.com/en-us/library/windows/desktop/bb787595%28v=vs.85%29.aspx
+		return DllCall("User32.dll\SetScrollInfo", "Ptr", this._hwnd, "Int", fnBar, "Ptr", lpsi[], "UInt", fRedraw, "UInt")
 	}
 	
 	;ScrollWindow(hwnd, XAmount, YAmount, lpRect, lpClipRect){
-	ScrollWindow(hwnd, XAmount, YAmount){
+	;ScrollWindow(hwnd, XAmount, YAmount){
+	ScrollWindow(XAmount, YAmount){
 		; https://msdn.microsoft.com/en-us/library/windows/desktop/bb787591%28v=vs.85%29.aspx
-		return DllCall("User32.dll\ScrollWindow", "Ptr", hwnd, "Int", XAmount, "Int", YAmount, "Ptr", 0, "Ptr", 0)
+		return DllCall("User32.dll\ScrollWindow", "Ptr", this._hwnd, "Int", XAmount, "Int", YAmount, "Ptr", 0, "Ptr", 0)
 	}
 	/*
    ; ===================================================================================================================
@@ -104,14 +118,8 @@ class MyClass {
 	  Return DllCall("User32.dll\GetScrollInfo", "Ptr", This._HWND, "Int", SB, "Ptr", &SI, "UInt")
    }
    */
-	GetScrollInfo(fnBar, ByRef lpsi){
-		; https://msdn.microsoft.com/en-us/library/windows/desktop/bb787583%28v=vs.85%29.aspx
-		lpsi := new _Struct(WinStructs.SCROLLINFO)
-		lpsi.cBsize := sizeof(WinStructs.SCROLLINFO)
-		lpsi.fMask := this.SIF_ALL
-		r := DllCall("User32.dll\GetScrollInfo", "Ptr", this._hwnd, "Int", fnBar, "Ptr", lpsi[], "UInt")
-		Return r
-	}
+	
+	/*
    ; ===================================================================================================================
    SetScrollInfo(SB, Values) {
 	  Static SI_SIZE := 28
@@ -133,6 +141,7 @@ class MyClass {
 	  }
 	  Return False
    }
+	*/
 	
 	Scroll(WP, LP, Msg, HWND) {
 		Static SB_LINEMINUS := 0, SB_LINEPLUS := 1, SB_PAGEMINUS := 2, SB_PAGEPLUS := 3, SB_THUMBTRACK := 5
@@ -161,7 +170,14 @@ class MyClass {
 		If (PA = PN) {
 			Return 0
 		}
-		This.SetScrollInfo(SB, {Pos: PN})
+		
+		lpsi := new _Struct(WinStructs.SCROLLINFO)
+		lpsi.cBsize := sizeof(WinStructs.SCROLLINFO)
+		lpsi.fMask := this.SIF_POS
+		lpsi.nPos := PN
+		;this.SetScrollInfo(this._hwnd, SB, lpsi)
+		this.SetScrollInfo(SB, lpsi)
+		
 		This.GetScrollInfo(SB, SI)
 		PN := SI.nPos
 		If (SB = 0)
@@ -175,7 +191,7 @@ class MyClass {
 			HS := PA - PN
 		} Else {
 			VS := PA - PN
-			DllCall("User32.dll\ScrollWindow", "Ptr", This._HWND, "Int", HS, "Int", VS, "Ptr", 0, "Ptr", 0)
+			this.ScrollWindow(HS,VS)
 		}
 		Return 0
    }
