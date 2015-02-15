@@ -156,24 +156,24 @@ class _CScrollGui {
 	_GetClientSize(){
 		DHW := A_DetectHiddenWindows
 		DetectHiddenWindows, On
-		;VarSetCapacity(RECT, 16, 0)
+		
 		Width := Height := 0
 		HWND := this._HWND
-		CMD := 5 ; GW_CHILD
 		L := T := R := B := LH := TH := ""
+		CMD := 5 ; GW_CHILD
 		While (HWND := DllCall("GetWindow", "Ptr", HWND, "UInt", CMD, "UPtr")) && (CMD := 2) {
-		WinGetPos, X, Y, W, H, ahk_id %HWND%
-		W += X, H += Y
-		WinGet, Styles, Style, ahk_id %HWND%
-		If (Styles & 0x10000000) { ; WS_VISIBLE
-		If (L = "") || (X < L)
-			L := X
-		If (T = "") || (Y < T)
-			T := Y
-		If (R = "") || (W > R)
-			R := W
-		If (B = "") || (H > B)
-			B := H
+			WinGetPos, X, Y, W, H, % "ahk_id " HWND
+			W += X, H += Y
+			WinGet, Styles, Style, % "ahk_id " HWND
+			If (Styles & 0x10000000) { ; WS_VISIBLE
+			If (L = "") || (X < L)
+				L := X
+			If (T = "") || (Y < T)
+				T := Y
+			If (R = "") || (W > R)
+				R := W
+			If (B = "") || (H > B)
+				B := H
 		}
 		Else {
 			If (LH = "") || (X < LH)
@@ -182,7 +182,7 @@ class _CScrollGui {
 				TH := Y
 			}
 		}
-		DetectHiddenWindows, %DHW%
+		DetectHiddenWindows, % DHW
 		If (LH <> "") {
 			POINT := new _Struct(WinStructs.POINT)
 			POINT.x := LH
