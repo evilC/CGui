@@ -53,6 +53,7 @@ class _CScrollGui extends _CGui {
 		base.__New(aParams*)
 		static WM_HSCROLL := 0x0114, WM_VSCROLL := 0x0115
 		static WM_MOUSEWHEEL := 0x020A, WM_MOUSEHWHEEL := 0x020E
+		static WM_SIZE := 0x0005
 		
 		this._Scroll_H := 1
 		this._Scroll_V := 1
@@ -66,7 +67,9 @@ class _CScrollGui extends _CGui {
 		OnMessage(WM_HSCROLL, fn, 999)
 		
 		fn := bind(this.AdjustToParent, this)
-		OnMessage(0x0005, fn, 999)
+		OnMessage(WM_SIZE, fn, 999)
+		fn := bind(this.AdjustToChild, this)
+		OnMessage(WM_SIZE, fn, 999)
 	}
 	
 	AdjustToParent(){
@@ -249,6 +252,7 @@ class _CScrollGui extends _CGui {
 	
 	; Message handlers come here when a scroll bar is dragged
 	_ScrollHandler(WParam, lParam, Msg, hwnd){
+		; Ignore this message if it is not for this Object.
 		If ((this._hwnd) != hwnd){
 			return
 		}
@@ -330,7 +334,10 @@ class _CScrollGui extends _CGui {
 		Static SB_HORZ := 0, SB_VERT = 1
 		; Get the HWND under the mouse
 		MouseGetPos,,,,hcurrent,2
-		
+		if (hcurrent = ""){
+			; No Sub-item found under cursor, get which main parent gui is under the cursor.
+			MouseGetPos,,,hcurrent
+		}
 		; Drill down through Hwnds until one is found with scrollbars showing.
 		has_scrollbars := this._GetScrollInfo(SB_HORZ|SB_VERT, lpsi, hcurrent)
 		while (!has_scrollbars){
@@ -360,8 +367,8 @@ class _CScrollGui extends _CGui {
 		SB := ((wParam >> 16) > 0x7FFF) || (wParam < 0) ? SB_LINEPLUS : SB_LINEMINUS
 		
 		obj._Scroll(sb, 0, MSG, hcurrent)
-		;return 0
-		return
+		return 0
+		;return
 	}
 	
 	_BlankScrollInfo(){
