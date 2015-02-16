@@ -77,7 +77,6 @@ class _CScrollGui extends _CGui {
 		Static SB_HORZ := 0, SB_VERT = 1
 		static SIF_PAGE := 0x2
 		
-		tooltip % "w: " this._width
 		WindowRECT := this._GetClientRect()
 		CanvasRECT := this._GetClientSize()
 		Width := WindowRECT.Right
@@ -422,16 +421,27 @@ Class _CGui {
 	}
 	
 	Gui(aParams*){
-		c := aParams[1]
 		; Store Guis option object
-		this._GuiOptions := this.ParseOptions(aParams[3])
+		if (aParams[1] = "add"){
+			;OutputDebug, % "[" A_ThisFunc "] Calling Parse Add: " aParams[3]
+			this._GuiOptions := this.ParseOptions(aParams[3])
+		} else {
+			;OutputDebug, % "[" A_ThisFunc "] Calling Regular Parse: " aParams[2]
+			this._GuiOptions := this.ParseOptions(aParams[2])
+		}
+		
+		; Translate options - eg apply added % value for positioning
+		;MsgBox % aParams[3]
+		;OutputDebug, % "[" A_ThisFunc "] Calling Command Parse: " aParams[1]
 		cmd := this.ParseOptions(aParams[1])
 		if (this._GuiOptions.flags.parent || cmd.flags.parent){
 			MsgBox % "Parent option not supported. Use GuiOption(""+Parent"", obj, ...)"
 			return
 		}
 		if (aParams[1] = "new"){
-			Gui, new, % "hwndhwnd " aParams[2], % aParams[3], % aParams[4]
+			aParams[1] := this.SerializeOptions()
+			OutputDebug, % "[" A_ThisFunc "] Executing Gui Cmd (New): " aParams[1] ", " aParams[2] ", " aParams[3] ", " aParams[4]
+			Gui, new, % "hwndhwnd " aParams[1], % aParams[3], % aParams[4]
 			this._hwnd := hwnd
 			_CGui._HwndLookup[hwnd] := this
 		} else if (aParams[1] = "add") {
@@ -440,8 +450,12 @@ Class _CGui {
 				MsgBox % "v-labels and g-labels are not allowed.`n`Please consult the documentation for alternate methods to use."
 				return
 			}
+			aParams[3] := this.SerializeOptions()
+			OutputDebug, % "[" A_ThisFunc "] Executing Gui Cmd (Add): " aParams[1] ", " aParams[2] ", " aParams[3] ", " aParams[4]
 			return new this.CGuiControl(this, aParams[2], aParams[3], aParams[4])
 		} else {
+			aParams[2] := this.SerializeOptions()
+			OutputDebug, % "[" A_ThisFunc "] Executing Gui Cmd (Default): " aParams[1] ", " aParams[2] ", " aParams[3] ", " aParams[4]
 			Gui, % this._hwnd ":" aParams[1], % aParams[2], % aParams[3], % aParams[4]
 		}
 	}
@@ -487,10 +501,12 @@ Class _CGui {
 	
 	; Parses an Option string into an object, for easy interpretation of which options it is setting
 	ParseOptions(options){
+		OutputDebug, % "[" A_ThisFunc "] Processing options: " options
 		ret := { flags: {}, options: {}, signs: {} }
 		opts := StrSplit(options, A_Space)
 		Loop % opts.MaxIndex() {
 			opt := opts[A_Index]
+			OutputDebug, % "[" A_ThisFunc "] Processing option: " opt
 			; Strip +/- prefix if it exists
 			sign := SubStr(opt,1,1)
 			p := 0
@@ -498,7 +514,8 @@ Class _CGui {
 				opt := SubStr(opt,2)
 			} else {
 				; default to being in + mode
-				sign := "+"
+				;sign := "+"
+				sign := ""
 			}
 			vg := SubStr(opt,1,1)
 			if (vg = "v" || vg = "g"){
@@ -510,6 +527,30 @@ Class _CGui {
 				value := RegExReplace(opt, "^([a-z|A-Z]*)(.*)", "$2")
 				; Take all the letters as the option
 				opt := RegExReplace(opt, "^([a-z|A-Z]*)(.*)", "$1")
+				percent := InStr(value,"%")
+				if (percent){
+					; non-Standard % value
+					max := -1
+					
+					if(opt = "w" || opt = "x"){
+						max := this._width
+						OutputDebug, % "[" A_ThisFunc "] Width: " max
+						if (max = 0){
+							max := this._parent._Width
+							OutputDebug, % "[" A_ThisFunc "] Parent Width: " max
+						}
+					} else if (opt = "h" || opt = "y") {
+						max := this._height
+						if (max = 0){
+							max := this._parent.Width
+						}
+					}
+					
+					if (max != -1){
+						value := Substr(value, 1, percent-1)
+						value := round(( max / 100 ) * value)
+					}
+				}
 			}
 			
 			ret.flags[opt] := 1
@@ -517,6 +558,27 @@ Class _CGui {
 			ret.signs[opt] := sign
 		}
 		return ret
+	}
+	
+	; Turns an options object into an option string
+	SerializeOptions(opts := 0){
+		if (opts = 0){
+			opts := this._GuiOptions
+		}
+
+		options := ""
+		Count := 0
+		for key, value in opts.options {
+			if (Count){
+				options .= " "
+			}
+			options .= opts.signs[key] key value
+			Count++
+		}
+		OutputDebug, % "[" A_ThisFunc "] Returning: " options
+		OutputDebug, % " "
+
+		return options
 	}
 }
 
