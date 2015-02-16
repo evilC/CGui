@@ -45,11 +45,12 @@ Class MyClass extends CWindow {
 			this.ChildWindow2.Gui("Add", "Text", "Center x0 w100%", "Text " A_Index)
 		}
 		this.ChildWindow1.Gui("Show", "x0 y50 w45% h200")
-		this.ChildWindow1.AdjustToChild()
+		;this.ChildWindow1.AdjustToChild()
 		
 		this.ChildWindow2.Gui("Show", "x55% y50 w45% h200")
-		this.ChildWindow2.AdjustToChild()
+		;this.ChildWindow2.AdjustToChild()
 		
+		this.AdjustToChild()
 	}
 	
 	SendMyString(){

@@ -3,6 +3,7 @@
 ; CGui Library =================================================================================================
 ; Author: evilC@evilC.com
 ; Scrolling code by Just Me.
+
 ; Gui Controls
 ;Class _CGuiControl extends _CGui {
 Class _CGuiControl extends _CScrollGui {
@@ -73,9 +74,11 @@ class _CScrollGui extends _CGui {
 		this.OnMessage(WM_HSCROLL, fn)
 		
 		fn := bind(this.AdjustToParent, this)
-		OnMessage(WM_SIZE, fn, 999)
+		;OnMessage(WM_SIZE, fn, 999)
+		this.OnMessage(WM_SIZE, fn, 999)
 		fn := bind(this.AdjustToChild, this)
-		OnMessage(WM_SIZE, fn, 999)
+		;OnMessage(WM_SIZE, fn, 999)
+		this.OnMessage(WM_SIZE, fn, 999)
 	}
 	
 	; AKA Window resized.
@@ -461,7 +464,12 @@ Class _CGui {
 		if (_CGui._MessageLookup[msg].MaxIndex()){
 			; There are CGui objects subscribed to this message
 			Loop % _CGui._MessageLookup[msg].MaxIndex() {
-				(_CGui._MessageLookup[msg][A_Index]).(WParam, lParam, Msg, hwnd)
+				; Fire message on object
+				ret := (_CGui._MessageLookup[msg][A_Index]).(WParam, lParam, Msg, hwnd)
+				if (ret = 0){
+					; returned 0, kill message chain
+					break
+				}
 			}
 		}
 	}
