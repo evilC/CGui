@@ -60,11 +60,8 @@ class _CScrollGui extends _CGui {
 
 		this.AdjustToChild()
 		
-		fn := bind(this._Wheel, this)
-		OnMessage(WM_MOUSEWHEEL, fn, 999)
-		
 		;fn := bind(this._Scroll, this)
-		fn := bind(this._ScrollFilter, this)
+		fn := bind(this._ScrollHandler, this)
 		OnMessage(WM_VSCROLL, fn, 999)
 		OnMessage(WM_HSCROLL, fn, 999)
 		
@@ -173,7 +170,7 @@ class _CScrollGui extends _CGui {
 		if (!hwnd){
 			hwnd := this._hwnd
 		}
-		tooltip % "Scrolling " hwnd
+		;tooltip % "Scrolling " hwnd
 		; https://msdn.microsoft.com/en-us/library/windows/desktop/bb787591%28v=vs.85%29.aspx
 		return DllCall("User32.dll\ScrollWindow", "Ptr", hwnd, "Int", XAmount, "Int", YAmount, "Ptr", 0, "Ptr", 0)
 	}
@@ -251,7 +248,7 @@ class _CScrollGui extends _CGui {
 	}
 	
 	; Message handlers come here when a scroll bar is dragged
-	_ScrollFilter(WParam, lParam, Msg, hwnd){
+	_ScrollHandler(WParam, lParam, Msg, hwnd){
 		If ((this._hwnd) != hwnd){
 			return
 		}
@@ -320,52 +317,51 @@ class _CScrollGui extends _CGui {
 			VS := PA - PN
 		}
 		this._ScrollWindow(HS, VS)
-		Return 0
+		Return
    }
 
-	_Wheel(WP, LP, Msg, H) {
+	_WheelHandler(wParam, lParam, Msg, hwnd) {
+		; _WheelHandler only fires once rather than for each window.
 		Static MK_SHIFT := 0x0004
 		Static SB_LINEMINUS := 0, SB_LINEPLUS := 1
 		Static WM_MOUSEWHEEL := 0x020A, WM_MOUSEHWHEEL := 0x020E
 		Static WM_HSCROLL := 0x0114, WM_VSCROLL := 0x0115
 		
 		Static SB_HORZ := 0, SB_VERT = 1
-		
+		; Get the HWND under the mouse
 		MouseGetPos,,,,hcurrent,2
-		;MsgBox % hcurrent ": " this._GetScrollInfo(SB_VERT, lpsi, hcurrent)
-		;return
-		has_scrollbars := this._GetScrollInfo(SB_VERT, lpsi, hcurrent)
+		
+		; Drill down through Hwnds until one is found with scrollbars showing.
+		has_scrollbars := this._GetScrollInfo(SB_HORZ|SB_VERT, lpsi, hcurrent)
 		while (!has_scrollbars){
-			;MsgBox % hcurrent
 			hcurrent := this._GetParent(hcurrent)
-			has_scrollbars := this._GetScrollInfo(SB_VERT, lpsi, hcurrent)
+			has_scrollbars := this._GetScrollInfo(SB_HORZ|SB_VERT, lpsi, hcurrent)
 			if (hcurrent = 0){
+				; No parent found - end
 				break
 			}
 		}
-		;MsgBox % lpsi.nMax
-		;MsgBox % "Final: " Format("{:x}", hcurrent) ", Type: " _CGui._HwndLookup[hcurrent]
-		;this._Scroll(sb, 0, MSG, hcurrent)
-		;return 0
-		;return
-		;this.base.__Class._HwndLookup
-		/*
-		if (H != this._hwnd){
-			MsgBox % "Hwnd " format("{:x}",H) " - " _CGui._HwndLookup[H]._type " - being processed by window " this._hwnd " ( " _CGui._HwndLookup[this._hwnd]._type ") - ignoring"
+		if (!hcurrent){
+			; No Hwnds with visible scrollbars found under mouse.
+			; Add Scroll defailt GUI?
 			return
 		}
-		MsgBox % "Hwnd " format("{:x}",H)  " (" _CGui._HwndLookup[H]._type ") being processed by window " this._hwnd " ( " _CGui._HwndLookup[this._hwnd]._type ") - processing"
-		return
-		*/
-		If (Msg = WM_MOUSEWHEEL) && This._Scroll_UseShift && (WP & MK_SHIFT) {
+		; Look up CGui object for hwnd
+		obj := _CGui._HwndLookup[hcurrent]
+		if (!IsObject(obj)){
+			; No CGui Object found for that hwnd
+			return
+		}
+		
+		If (Msg = WM_MOUSEWHEEL) && This._Scroll_UseShift && (wParam & MK_SHIFT) {
 			Msg := WM_MOUSEHWHEEL
 		}
 		MSG := (Msg = WM_MOUSEWHEEL ? WM_VSCROLL : WM_HSCROLL)
-		SB := ((WP >> 16) > 0x7FFF) || (WP < 0) ? SB_LINEPLUS : SB_LINEMINUS
-		;Return this._Scroll(sb, 0, MSG)
-		;this._Scroll(sb, 0, MSG, hcurrent)
-		_CGui._HwndLookup[hcurrent]._Scroll(sb, 0, MSG, hcurrent)
-		return 0
+		SB := ((wParam >> 16) > 0x7FFF) || (wParam < 0) ? SB_LINEPLUS : SB_LINEMINUS
+		
+		obj._Scroll(sb, 0, MSG, hcurrent)
+		;return 0
+		return
 	}
 	
 	_BlankScrollInfo(){
@@ -381,15 +377,37 @@ Class _CGui {
 	; equivalent to Gui, New, <params>
 	; put parent as param 1
 	__New(parent := 0, Param2 := "", Param3 := "", Param4 := ""){
+		static WM_MOUSEWHEEL := 0x020A, WM_MOUSEHWHEEL := 0x020E
+		
 		this._parent := parent
-		if (this.parent != 0){
-			; parent passed
+		if (this._parent = 0){
+			; Root Instance.
+			; Store a lookup table of HWND to CGui object on the Class definition.
+			; Not sure if this is a good place to store it or not...
+			_CGui._HwndLookup := {}
+
+			; We only need one wheel handler, as the HWND you are interested in is what is under the mouse.
+			; Therefore, one handler should perform the calculations once to determine which HWND should get the wheel input, if any.
+			fn := bind(this._WheelHandler, this)
+			OnMessage(WM_MOUSEWHEEL, fn, 999)
 		}
 		this.Gui("new", Param2, Param3, Param4)
+
+		/*
+		if (!IsObject(_CGui._HwndLookup)){
+			_CGui._HwndLookup := {}
+		}
+		*/
+		
+
 	}
 	
 	__Delete() {
 		this.base.__Class._HwndLookup.Remove(this._hwnd)
+	}
+	
+	_WheelHandler(WParam, lParam, Msg, hwnd) {
+		; designed to be overridden
 	}
 	
 	Gui(aParams*){
@@ -403,9 +421,6 @@ Class _CGui {
 		if (aParams[1] = "new"){
 			Gui, new, % "hwndhwnd " aParams[2], % aParams[3], % aParams[4]
 			this._hwnd := hwnd
-			if (!IsObject(_CGui._HwndLookup)){
-				_CGui._HwndLookup := {}
-			}
 			_CGui._HwndLookup[hwnd] := this
 		} else if (aParams[1] = "add") {
 			if (opts.flags.v || opts.flags.g){

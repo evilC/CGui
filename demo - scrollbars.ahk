@@ -21,7 +21,7 @@ GuiClose:
 
 Class MyClass extends CWindow {
 	__New(){
-		base.__New(this, "+Resize")
+		base.__New(0, "+Resize")
 		this.GUI_WIDTH := 200
 		this.Gui("Margin",5,5)
 
