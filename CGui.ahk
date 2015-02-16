@@ -80,11 +80,16 @@ class _CScrollGui extends _CGui {
 		
 		if (hwnd = 0){
 			hwnd := this._hwnd
+			OutputDebug, % "[" A_ThisFunc "] Called without params - hwnd: " this.FormatHex(hwnd)
+			;OutputDebug, % "[" A_ThisFunc "] Called without params - hwnd: " hwnd
 		} else if (this._hwnd != hwnd){
 			; message not for this window
 			return
+		} else {
+			OutputDebug, % "[" A_ThisFunc "] Called with params - hwnd: " this.FormatHex(hwnd)
+			;OutputDebug, % "[" A_ThisFunc "] Called with params - hwnd: " hwnd
 		}
-		tooltip % this._hwnd
+		
 		WindowRECT := this._GetClientRect()
 		CanvasRECT := this._GetClientSize()
 		Width := WindowRECT.Right
@@ -132,9 +137,12 @@ class _CScrollGui extends _CGui {
 		
 		if (hwnd = 0){
 			hwnd := this._hwnd
+			OutputDebug, % "[" A_ThisFunc "] Called without params - hwnd: " this.FormatHex(hwnd)
 		} else if (this._hwnd != hwnd){
 			;MsgBox % "hwnd " this._hwnd " Rejecting HWND " Format("{:x}",hwnd)
 			return
+		} else {
+			OutputDebug, % "[" A_ThisFunc "] Called with params - hwnd: " this.FormatHex(hwnd)
 		}
 		
 		WindowRECT := this._GetClientRect()
@@ -456,7 +464,7 @@ Class _CGui {
 		}
 		if (aParams[1] = "new"){
 			aParams[1] := this.SerializeOptions()
-			OutputDebug, % "[" A_ThisFunc "] Executing Gui Cmd (New): " aParams[1] ", " aParams[2] ", " aParams[3] ", " aParams[4]
+			;OutputDebug, % "[" A_ThisFunc "] Executing Gui Cmd (New): " aParams[1] ", " aParams[2] ", " aParams[3] ", " aParams[4]
 			Gui, new, % "hwndhwnd " aParams[1], % aParams[3], % aParams[4]
 			this._hwnd := hwnd
 			_CGui._HwndLookup[hwnd] := this
@@ -467,11 +475,11 @@ Class _CGui {
 				return
 			}
 			aParams[3] := this.SerializeOptions()
-			OutputDebug, % "[" A_ThisFunc "] Executing Gui Cmd (Add): " aParams[1] ", " aParams[2] ", " aParams[3] ", " aParams[4]
+			;OutputDebug, % "[" A_ThisFunc "] Executing Gui Cmd (Add): " aParams[1] ", " aParams[2] ", " aParams[3] ", " aParams[4]
 			return new this.CGuiControl(this, aParams[2], aParams[3], aParams[4])
 		} else {
 			aParams[2] := this.SerializeOptions()
-			OutputDebug, % "[" A_ThisFunc "] Executing Gui Cmd (Default): " aParams[1] ", " aParams[2] ", " aParams[3] ", " aParams[4]
+			;OutputDebug, % "[" A_ThisFunc "] Executing Gui Cmd (Default): " aParams[1] ", " aParams[2] ", " aParams[3] ", " aParams[4]
 			Gui, % this._hwnd ":" aParams[1], % aParams[2], % aParams[3], % aParams[4]
 		}
 	}
@@ -517,12 +525,12 @@ Class _CGui {
 	
 	; Parses an Option string into an object, for easy interpretation of which options it is setting
 	ParseOptions(options){
-		OutputDebug, % "[" A_ThisFunc "] Processing options: " options
+		;OutputDebug, % "[" A_ThisFunc "] Processing options: " options
 		ret := { flags: {}, options: {}, signs: {} }
 		opts := StrSplit(options, A_Space)
 		Loop % opts.MaxIndex() {
 			opt := opts[A_Index]
-			OutputDebug, % "[" A_ThisFunc "] Processing option: " opt
+			;OutputDebug, % "[" A_ThisFunc "] Processing option: " opt
 			; Strip +/- prefix if it exists
 			sign := SubStr(opt,1,1)
 			p := 0
@@ -550,10 +558,10 @@ Class _CGui {
 					
 					if(opt = "w" || opt = "x"){
 						max := this._width
-						OutputDebug, % "[" A_ThisFunc "] Width: " max
+						;OutputDebug, % "[" A_ThisFunc "] Width: " max
 						if (max = 0){
 							max := this._parent._Width
-							OutputDebug, % "[" A_ThisFunc "] Parent Width: " max
+							;OutputDebug, % "[" A_ThisFunc "] Parent Width: " max
 						}
 					} else if (opt = "h" || opt = "y") {
 						max := this._height
@@ -592,10 +600,14 @@ Class _CGui {
 			options .= opts.signs[key] key value
 			Count++
 		}
-		OutputDebug, % "[" A_ThisFunc "] Returning: " options
-		OutputDebug, % " "
+		;OutputDebug, % "[" A_ThisFunc "] Returning: " options
+		;OutputDebug, % " "
 
 		return options
+	}
+	
+	FormatHex(val){
+		return Format("{:#x}", val+0)
 	}
 }
 
