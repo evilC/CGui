@@ -63,9 +63,14 @@ class _CScrollGui extends _CGui {
 		this.AdjustToChild()
 		
 		;fn := bind(this._Scroll, this)
+		/*
 		fn := bind(this._ScrollHandler, this)
 		OnMessage(WM_VSCROLL, fn, 999)
 		OnMessage(WM_HSCROLL, fn, 999)
+		*/
+		fn := bind(this._ScrollHandler, this)
+		this.OnMessage(WM_VSCROLL, fn)
+		this.OnMessage(WM_HSCROLL, fn)
 		
 		fn := bind(this.AdjustToParent, this)
 		OnMessage(WM_SIZE, fn, 999)
@@ -350,7 +355,7 @@ class _CScrollGui extends _CGui {
 		this._ScrollWindow(HS, VS)
 		Return
    }
-
+	
 	_WheelHandler(wParam, lParam, Msg, hwnd) {
 		; _WheelHandler only fires once rather than for each window.
 		Static MK_SHIFT := 0x0004
@@ -419,7 +424,7 @@ Class _CGui {
 			; Store a lookup table of HWND to CGui object on the Class definition.
 			; Not sure if this is a good place to store it or not...
 			_CGui._HwndLookup := {}
-
+			_CGui._MessageLookup := {}
 			; We only need one wheel handler, as the HWND you are interested in is what is under the mouse.
 			; Therefore, one handler should perform the calculations once to determine which HWND should get the wheel input, if any.
 			fn := bind(this._WheelHandler, this)
@@ -438,6 +443,27 @@ Class _CGui {
 	
 	__Delete() {
 		this.base.__Class._HwndLookup.Remove(this._hwnd)
+	}
+	
+	OnMessage(msg, cb){
+		if (!_CGui._MessageLookup[msg].MaxIndex()){
+			; First time a message is subscribed to
+			_CGui._MessageLookup[msg] := []
+			fn := bind(this._MessageHandler, this)
+			OnMessage(msg, fn)
+		}
+		_CGui._MessageLookup[msg].Insert(cb)
+	}
+	
+	; Receives all all messages
+	_MessageHandler(WParam, lParam, Msg, hwnd := 0){
+		;_CGui._HwndLookup[hwnd]
+		if (_CGui._MessageLookup[msg].MaxIndex()){
+			; There are CGui objects subscribed to this message
+			Loop % _CGui._MessageLookup[msg].MaxIndex() {
+				(_CGui._MessageLookup[msg][A_Index]).(WParam, lParam, Msg, hwnd)
+			}
+		}
 	}
 	
 	_WheelHandler(WParam, lParam, Msg, hwnd) {
