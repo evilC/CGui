@@ -266,11 +266,11 @@ class _CScrollGui extends _CGui {
 		
 		if (hwnd = 0){
 			hwnd := this._hwnd
-		} else If ((this._hwnd) != HWND){
-			;MsgBox % "hwnd passed - scroll wheel hit"
-			;return
 		}
-		;MsgBox % "Hwnd " format("{:x}",hwnd) " sending message to window " this._hwnd " - processing"
+		; For safety
+		If ((this._hwnd) != HWND){
+			return
+		}
 		
 		If (LP <> 0) {
 			Return
@@ -279,7 +279,7 @@ class _CScrollGui extends _CGui {
 		SC := WP & 0xFFFF
 		SD := (Msg = WM_HSCROLL ? This._LineH : This._LineV)
 		SI := 0
-		If (!This._GetScrollInfo(SB, SI, hwnd)){
+		If (!This._GetScrollInfo(SB, SI)){
 			Return
 		}
 		PA := PN := SI.nPos
@@ -295,16 +295,16 @@ class _CScrollGui extends _CGui {
 			PN := SI.nTrackPos
 		} 
 		If (PA = PN) {
-			SoundBeep
-			Return 0
+			;Return 0
+			return
 		}
 		
 		lpsi := this._BlankScrollInfo()
 		lpsi.fMask := SIF_POS
 		lpsi.nPos := PN
-		this._SetScrollInfo(SB, lpsi,, hwnd)
+		this._SetScrollInfo(SB, lpsi)
 		
-		This._GetScrollInfo(SB, SI, hwnd)
+		This._GetScrollInfo(SB, SI)
 		PN := SI.nPos
 		If (SB = 0) {
 			This._Scroll_PosH := PN
@@ -319,7 +319,7 @@ class _CScrollGui extends _CGui {
 		} Else {
 			VS := PA - PN
 		}
-		this._ScrollWindow(HS, VS, hwnd)
+		this._ScrollWindow(HS, VS)
 		Return 0
    }
 
