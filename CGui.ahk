@@ -63,39 +63,34 @@ class _CScrollGui extends _CGui {
 
 		this.AdjustToChild()
 		
-		;fn := bind(this._Scroll, this)
-		/*
-		fn := bind(this._ScrollHandler, this)
-		OnMessage(WM_VSCROLL, fn, 999)
-		OnMessage(WM_HSCROLL, fn, 999)
-		*/
 		fn := bind(this._ScrollHandler, this)
 		this.OnMessage(WM_VSCROLL, fn)
 		this.OnMessage(WM_HSCROLL, fn)
 		
 		fn := bind(this.AdjustToParent, this)
-		;OnMessage(WM_SIZE, fn, 999)
 		this.OnMessage(WM_SIZE, fn, 999)
 		fn := bind(this.AdjustToChild, this)
-		;OnMessage(WM_SIZE, fn, 999)
 		this.OnMessage(WM_SIZE, fn, 999)
 	}
 	
 	; AKA Window resized.
 	AdjustToParent(WParam:= 0, lParam := 0, Msg := 0, hwnd := 0){
+		static debug := 0
 		Static SB_HORZ := 0, SB_VERT = 1
 		static SIF_PAGE := 0x2
 		
 		if (hwnd = 0){
 			hwnd := this._hwnd
-			OutputDebug, % "[" A_ThisFunc "] Called without params - hwnd: " this.FormatHex(hwnd)
-			;OutputDebug, % "[" A_ThisFunc "] Called without params - hwnd: " hwnd
+			if (debug){
+				OutputDebug, % "[" A_ThisFunc "] Called without params - hwnd: " this.FormatHex(hwnd)
+			}
 		} else if (this._hwnd != hwnd){
 			; message not for this window
 			return
 		} else {
-			OutputDebug, % "[" A_ThisFunc "] Called with params - hwnd: " this.FormatHex(hwnd)
-			;OutputDebug, % "[" A_ThisFunc "] Called with params - hwnd: " hwnd
+			if (debug) {
+				OutputDebug, % "[" A_ThisFunc "] Called with params - hwnd: " this.FormatHex(hwnd)
+			}
 		}
 		
 		WindowRECT := this._GetClientRect()
@@ -140,17 +135,22 @@ class _CScrollGui extends _CGui {
 	
 	; AKA Child contents changed size
 	AdjustToChild(WParam := 0, lParam := 0, msg := 0, hwnd := 0){
+		static debug := 0
 		Static SB_HORZ := 0, SB_VERT = 1
 		static SIF_ALL := 0x17
 		
 		if (hwnd = 0){
 			hwnd := this._hwnd
-			OutputDebug, % "[" A_ThisFunc "] Called without params - hwnd: " this.FormatHex(hwnd)
+			if (debug) {
+				OutputDebug, % "[" A_ThisFunc "] Called without params - hwnd: " this.FormatHex(hwnd)
+			}
 		} else if (this._hwnd != hwnd){
 			;MsgBox % "hwnd " this._hwnd " Rejecting HWND " Format("{:x}",hwnd)
 			return
 		} else {
-			OutputDebug, % "[" A_ThisFunc "] Called with params - hwnd: " this.FormatHex(hwnd)
+			if (debug) {
+				OutputDebug, % "[" A_ThisFunc "] Called with params - hwnd: " this.FormatHex(hwnd)
+			}
 		}
 		
 		WindowRECT := this._GetClientRect()
@@ -434,14 +434,6 @@ Class _CGui {
 			OnMessage(WM_MOUSEWHEEL, fn, 999)
 		}
 		this.Gui("new", Param2, Param3, Param4)
-
-		/*
-		if (!IsObject(_CGui._HwndLookup)){
-			_CGui._HwndLookup := {}
-		}
-		*/
-		
-
 	}
 	
 	__Delete() {
@@ -479,18 +471,18 @@ Class _CGui {
 	}
 	
 	Gui(aParams*){
+		static debug := 0
+		if (debug){
+			OutputDebug, % "[" A_ThisFunc "] PROCESSING COMMAND: " aParams[1] ", " aParams[2] ", " aParams[3] ", " aParams[4]
+		}
 		; Store Guis option object
 		if (aParams[1] = "add"){
-			;OutputDebug, % "[" A_ThisFunc "] Calling Parse Add: " aParams[3]
-			this._GuiOptions := this.ParseOptions(aParams[3])
+			this._GuiOptions := this.ParseOptions(aParams[1],aParams[3])
 		} else {
-			;OutputDebug, % "[" A_ThisFunc "] Calling Regular Parse: " aParams[2]
-			this._GuiOptions := this.ParseOptions(aParams[2])
+			this._GuiOptions := this.ParseOptions(aParams[1],aParams[2])
 		}
 		
 		; Translate options - eg apply added % value for positioning
-		;MsgBox % aParams[3]
-		;OutputDebug, % "[" A_ThisFunc "] Calling Command Parse: " aParams[1]
 		cmd := this.ParseOptions(aParams[1])
 		if (this._GuiOptions.flags.parent || cmd.flags.parent){
 			MsgBox % "Parent option not supported. Use GuiOption(""+Parent"", obj, ...)"
@@ -509,12 +501,23 @@ Class _CGui {
 				return
 			}
 			aParams[3] := this.SerializeOptions()
-			;OutputDebug, % "[" A_ThisFunc "] Executing Gui Cmd (Add): " aParams[1] ", " aParams[2] ", " aParams[3] ", " aParams[4]
+			if (debug) {
+				OutputDebug, % "[" A_ThisFunc "] GUI COMMAND ENDS: " aParams[1] ", " aParams[2] ", " aParams[3] ", " aParams[4]
+				OutputDebug, % " "
+			}
 			return new this.CGuiControl(this, aParams[2], aParams[3], aParams[4])
+		} else if (aParams[1] = "show") {
+			aParams[2] := this.SerializeOptions()
+			;OutputDebug, % "[" A_ThisFunc "] Executing Gui Cmd (Default): " aParams[1] ", " aParams[2] ", " aParams[3] ", " aParams[4]
+			Gui, % this._hwnd ":" aParams[1], % aParams[2], % aParams[3], % aParams[4]
 		} else {
 			aParams[2] := this.SerializeOptions()
 			;OutputDebug, % "[" A_ThisFunc "] Executing Gui Cmd (Default): " aParams[1] ", " aParams[2] ", " aParams[3] ", " aParams[4]
 			Gui, % this._hwnd ":" aParams[1], % aParams[2], % aParams[3], % aParams[4]
+		}
+		if (debug){
+			OutputDebug, % "[" A_ThisFunc "] GUI COMMAND ENDS"
+			OutputDebug, % " "
 		}
 	}
 	
@@ -558,13 +561,21 @@ Class _CGui {
 	}
 	
 	; Parses an Option string into an object, for easy interpretation of which options it is setting
-	ParseOptions(options){
-		;OutputDebug, % "[" A_ThisFunc "] Processing options: " options
+	ParseOptions(cmd, options := ""){
+		static debug := 0
+		static xywh_types := {x: 1, y: 1, w: 1, h: 1}
+		static xywh_lookup := {x: "_Width", y: "_Height", w: "_Width", h: "_Height"}
+		static wh_types := {w: 1, h: 1}
+		if (debug) {
+			OutputDebug, % "[" A_ThisFunc "] Processing options: " options
+		}
 		ret := { flags: {}, options: {}, signs: {} }
 		opts := StrSplit(options, A_Space)
 		Loop % opts.MaxIndex() {
 			opt := opts[A_Index]
-			;OutputDebug, % "[" A_ThisFunc "] Processing option: " opt
+			if (debug) {
+				OutputDebug, % "[" A_ThisFunc "] Processing option: " opt
+			}
 			; Strip +/- prefix if it exists
 			sign := SubStr(opt,1,1)
 			p := 0
@@ -585,22 +596,21 @@ Class _CGui {
 				value := RegExReplace(opt, "^([a-z|A-Z]*)(.*)", "$2")
 				; Take all the letters as the option
 				opt := RegExReplace(opt, "^([a-z|A-Z]*)(.*)", "$1")
+
 				percent := InStr(value,"%")
 				if (percent){
 					; non-Standard % value
 					max := -1
 					
-					if(opt = "w" || opt = "x"){
-						max := this._width
-						;OutputDebug, % "[" A_ThisFunc "] Width: " max
-						if (max = 0){
-							max := this._parent._Width
-							;OutputDebug, % "[" A_ThisFunc "] Parent Width: " max
-						}
-					} else if (opt = "h" || opt = "y") {
-						max := this._height
-						if (max = 0){
-							max := this._parent.Width
+					if (ObjHasKey(xywh_types,opt)){
+						if (cmd = "show") {
+							; Gui, Show, ...  - available size is that of parent (or desktop)
+							max := this._parent[xywh_lookup[opt]]
+							;OutputDebug, % "[" A_ThisFunc "] HWND " this._hwnd " OPTIONS/OPTION (" options "/" opt ") reports Parent (" this._parent._hwnd ") Width: " max
+						} else {
+							; Gui, Add, ... - available size is that of this
+							max := this[xywh_lookup[opt]]
+							;OutputDebug, % "[" A_ThisFunc "] HWND " this._hwnd " OPTIONS/OPTION (" options "/" opt ") reports Width: " max
 						}
 					}
 					
@@ -621,6 +631,7 @@ Class _CGui {
 	
 	; Turns an options object into an option string
 	SerializeOptions(opts := 0){
+		static debug := 0
 		if (opts = 0){
 			opts := this._GuiOptions
 		}
@@ -634,8 +645,10 @@ Class _CGui {
 			options .= opts.signs[key] key value
 			Count++
 		}
-		;OutputDebug, % "[" A_ThisFunc "] Returning: " options
-		;OutputDebug, % " "
+		if (debug){
+			OutputDebug, % "[" A_ThisFunc "] Returning: " options
+			;OutputDebug, % " "
+		}
 
 		return options
 	}
