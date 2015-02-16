@@ -73,10 +73,18 @@ class _CScrollGui extends _CGui {
 		OnMessage(WM_SIZE, fn, 999)
 	}
 	
-	AdjustToParent(){
+	; AKA Window resized.
+	AdjustToParent(WParam:= 0, lParam := 0, Msg := 0, hwnd := 0){
 		Static SB_HORZ := 0, SB_VERT = 1
 		static SIF_PAGE := 0x2
 		
+		if (hwnd = 0){
+			hwnd := this._hwnd
+		} else if (this._hwnd != hwnd){
+			; message not for this window
+			return
+		}
+		tooltip % this._hwnd
 		WindowRECT := this._GetClientRect()
 		CanvasRECT := this._GetClientSize()
 		Width := WindowRECT.Right
@@ -117,9 +125,17 @@ class _CScrollGui extends _CGui {
 		}
 	}
 	
-	AdjustToChild(){
+	; AKA Child contents changed size
+	AdjustToChild(WParam := 0, lParam := 0, msg := 0, hwnd := 0){
 		Static SB_HORZ := 0, SB_VERT = 1
 		static SIF_ALL := 0x17
+		
+		if (hwnd = 0){
+			hwnd := this._hwnd
+		} else if (this._hwnd != hwnd){
+			;MsgBox % "hwnd " this._hwnd " Rejecting HWND " Format("{:x}",hwnd)
+			return
+		}
 		
 		WindowRECT := this._GetClientRect()
 		this._width := WindowRECT.Right
@@ -549,6 +565,7 @@ Class _CGui {
 					if (max != -1){
 						value := Substr(value, 1, percent-1)
 						value := round(( max / 100 ) * value)
+						ret.flags._haspercent := 1
 					}
 				}
 			}

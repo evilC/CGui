@@ -26,28 +26,30 @@ Class MyClass extends CWindow {
 		this.GUI_MAX_WIDTH := 500
 		this.GUI_COLUMN_2 := 300
 		this.Gui("Margin",5,5)
+
+		this.Gui("Show", "w500 h150","Scroll Demo")
 		
-		this.Gui("Add", "Text", "Center xm ym w" this.GUI_MAX_WIDTH, "HWND: " this._hwnd)
+		;this.Gui("Add", "Text", "Center xm ym w" this.GUI_MAX_WIDTH, "HWND: " this._hwnd)
+		this.Gui("Add", "Text", "Center xm ym w100% ", "HWND: " this._hwnd)
 
 		this.ChildWindow1 := new CWindow(this, "-Border").GuiOption("+Parent", this)
-		this.Gui("Add", "Text", "Center xm y30 w" this.GUI_WIDTH, "HWND: " this.ChildWindow1._hwnd)
+		this.Gui("Add", "Text", "Center x0 y30 w45%", "HWND: " this.ChildWindow1._hwnd)
 		Loop 20 {
-			;this.ChildWindow1.Gui("Add", "Text", "Center xm w" this.GUI_WIDTH, "Text " A_Index)
+			;this.ChildWindow1.Gui("Add", "Text", "Center xm w50%", "Text " A_Index)
 			this.ChildWindow1.Gui("Add", "Text", "Center xm", "Text " A_Index)
 		}
-		this.ChildWindow1.Gui("Show", "x0 y50 w" this.GUI_WIDTH " h200")
-		this.ChildWindow1.AdjustToChild()
 		
 		this.ChildWindow2 := new CWindow(this, "-Border").GuiOption("+Parent", this)
-		this.Gui("Add", "Text", "Center x" this.GUI_COLUMN_2 " y30 w" this.GUI_WIDTH, "HWND: " this.ChildWindow2._hwnd)
+		this.Gui("Add", "Text", "Center x50% y30 w50%", "HWND: " this.ChildWindow2._hwnd)
 		Loop 30 {
-			this.ChildWindow2.Gui("Add", "Text", "Center xm w" this.GUI_WIDTH, "Text " A_Index)
+			this.ChildWindow2.Gui("Add", "Text", "Center x0 w100%", "Text " A_Index)
 		}
-		this.ChildWindow2.Gui("Show", "x" this.GUI_COLUMN_2 " y50 w" this.GUI_WIDTH " h200")
+		this.ChildWindow1.Gui("Show", "x0 y50 w45% h200")
+		this.ChildWindow1.AdjustToChild()
+		
+		this.ChildWindow2.Gui("Show", "x55% y50 w45% h200")
 		this.ChildWindow2.AdjustToChild()
 		
-		
-		this.Gui("Show", "w500 h150","Scroll Demo")
 	}
 	
 	SendMyString(){
