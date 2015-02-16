@@ -1,7 +1,8 @@
 ; REQUIRES AHK TEST BUILD from HERE: http://ahkscript.org/boards/viewtopic.php?f=24&t=5802
 
 ; CGui Library =================================================================================================
-; A library 
+; Author: evilC@evilC.com
+; Scrolling code by Just Me.
 ; Gui Controls
 ;Class _CGuiControl extends _CGui {
 Class _CGuiControl extends _CScrollGui {
@@ -76,6 +77,7 @@ class _CScrollGui extends _CGui {
 		Static SB_HORZ := 0, SB_VERT = 1
 		static SIF_PAGE := 0x2
 		
+		tooltip % "w: " this._width
 		WindowRECT := this._GetClientRect()
 		CanvasRECT := this._GetClientSize()
 		Width := WindowRECT.Right
@@ -121,6 +123,8 @@ class _CScrollGui extends _CGui {
 		static SIF_ALL := 0x17
 		
 		WindowRECT := this._GetClientRect()
+		this._width := WindowRECT.Right
+		this._height := WindowRECT.Bottom
 		CanvasRECT := this._GetClientSize()
 		if (!this._Scroll_Width || !this._Scroll_Height){
 			Width := WindowRECT.Right
@@ -419,9 +423,10 @@ Class _CGui {
 	
 	Gui(aParams*){
 		c := aParams[1]
-		opts := this.ParseOptions(aParams[3])
+		; Store Guis option object
+		this._GuiOptions := this.ParseOptions(aParams[3])
 		cmd := this.ParseOptions(aParams[1])
-		if (opts.flags.parent || cmd.flags.parent){
+		if (this._GuiOptions.flags.parent || cmd.flags.parent){
 			MsgBox % "Parent option not supported. Use GuiOption(""+Parent"", obj, ...)"
 			return
 		}
@@ -430,7 +435,7 @@ Class _CGui {
 			this._hwnd := hwnd
 			_CGui._HwndLookup[hwnd] := this
 		} else if (aParams[1] = "add") {
-			if (opts.flags.v || opts.flags.g){
+			if (this._GuiOptions.flags.v || this._GuiOptions.flags.g){
 				; v-label or g-label passed old-school style
 				MsgBox % "v-labels and g-labels are not allowed.`n`Please consult the documentation for alternate methods to use."
 				return
@@ -501,10 +506,10 @@ Class _CGui {
 				value := Substr(opt,2)
 				opt := vg
 			} else {
+				; Take non-letters as value
+				value := RegExReplace(opt, "^([a-z|A-Z]*)(.*)", "$2")
 				; Take all the letters as the option
 				opt := RegExReplace(opt, "^([a-z|A-Z]*)(.*)", "$1")
-				; Take numbers as value
-				value := RegExReplace(opt, "^([a-z|A-Z]*)(.*)", "$2")
 			}
 			
 			ret.flags[opt] := 1
