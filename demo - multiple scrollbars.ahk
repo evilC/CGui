@@ -12,7 +12,7 @@
 ; Include skinning library if it exists.
 ;#include *i <USkin>
 
-MyClass := new MyClass()
+mc := new MyClass()
 return
 
 Esc::
@@ -26,21 +26,24 @@ Class MyClass extends CWindow {
 		this.Gui("Margin",5,5)
 
 		this.ChildWindow1 := new CWindow(this, "-Border").GuiOption("+Parent", this)
+		this.Gui("Add", "Text", "Center xm ym w" this.GUI_WIDTH, "HWND: " this.ChildWindow1._hwnd)
 		Loop 20 {
-			this.ChildWindow1.Gui("Add", "Text", "Center xm w" this.GUI_WIDTH, "Text " A_Index)
+			;this.ChildWindow1.Gui("Add", "Text", "Center xm w" this.GUI_WIDTH, "Text " A_Index)
+			this.ChildWindow1.Gui("Add", "Text", "Center xm", "Text " A_Index)
 		}
-		this.ChildWindow1.Gui("Show", "x0 y0 w" this.GUI_WIDTH " h200")
+		this.ChildWindow1.Gui("Show", "x0 y20 w" this.GUI_WIDTH " h200")
 		this.ChildWindow1.AdjustToChild()
 		
 		this.ChildWindow2 := new CWindow(this, "-Border").GuiOption("+Parent", this)
-		Loop 20 {
+		this.Gui("Add", "Text", "Center x" this.GUI_WIDTH + 90 " ym w" this.GUI_WIDTH, "HWND: " this.ChildWindow2._hwnd)
+		Loop 30 {
 			this.ChildWindow2.Gui("Add", "Text", "Center xm w" this.GUI_WIDTH, "Text " A_Index)
 		}
-		this.ChildWindow2.Gui("Show", "x290 y0 w" this.GUI_WIDTH " h200")
+		this.ChildWindow2.Gui("Show", "x290 y20 w" this.GUI_WIDTH " h200")
 		this.ChildWindow2.AdjustToChild()
 		
 		
-		this.Gui("Show", "w500 h210","Scroll Demo")
+		this.Gui("Show", "w500 h230","Scroll Demo")
 	}
 	
 	SendMyString(){

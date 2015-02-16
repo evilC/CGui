@@ -5,6 +5,7 @@
 ; Gui Controls
 ;Class _CGuiControl extends _CGui {
 Class _CGuiControl extends _CScrollGui {
+	_type := "c"
 	_glabel := 0
 	; equivalent to Gui, Add, <params>
 	; Pass parent as param 1
@@ -62,7 +63,8 @@ class _CScrollGui extends _CGui {
 		fn := bind(this._Wheel, this)
 		OnMessage(WM_MOUSEWHEEL, fn, 999)
 		
-		fn := bind(this._Scroll, this)
+		;fn := bind(this._Scroll, this)
+		fn := bind(this._ScrollFilter, this)
 		OnMessage(WM_VSCROLL, fn, 999)
 		OnMessage(WM_HSCROLL, fn, 999)
 		
@@ -124,10 +126,10 @@ class _CScrollGui extends _CGui {
 			Width := WindowRECT.Right
 			Height := WindowRECT.Bottom
 		}
-		this.MaxH := WindowRECT.Right
-		this.MaxV := WindowRECT.Bottom
-		this.LineH := Ceil(this.MaxH / 20)
-		this.LineV := Ceil(this.MaxV / 20)
+		this._MaxH := WindowRECT.Right
+		this._MaxV := WindowRECT.Bottom
+		this._LineH := Ceil(this._MaxH / 20)
+		this._LineV := Ceil(this._MaxV / 20)
 		
 		lpsi := this._BlankScrollInfo()
 		lpsi.fMask := SIF_ALL
@@ -145,23 +147,35 @@ class _CScrollGui extends _CGui {
 		this._Scroll_Height := Height
 	}
 	
-	_GetScrollInfo(fnBar, ByRef lpsi){
+	_GetScrollInfo(fnBar, ByRef lpsi, hwnd := 0){
 		static SIF_ALL := 0x17
+		if (hwnd = 0){
+			; Normal use - operate on youurself. Passed hwnd = inspect another window
+			hwnd := this._hwnd
+		}
 		; https://msdn.microsoft.com/en-us/library/windows/desktop/bb787583%28v=vs.85%29.aspx
 		lpsi := this._BlankScrollInfo()
 		lpsi.fMask := SIF_ALL
-		r := DllCall("User32.dll\GetScrollInfo", "Ptr", this._hwnd, "Int", fnBar, "Ptr", lpsi[], "UInt")
+		r := DllCall("User32.dll\GetScrollInfo", "Ptr", hwnd, "Int", fnBar, "Ptr", lpsi[], "UInt")
 		Return r
 	}
 
-	_SetScrollInfo(fnBar, ByRef lpsi, fRedraw := 1){
+	_SetScrollInfo(fnBar, ByRef lpsi, fRedraw := 1, hwnd := 0){
+		if (hwnd = 0){
+			; Normal use - operate on youurself. Passed hwnd = inspect another window
+			hwnd := this._hwnd
+		}
 		; https://msdn.microsoft.com/en-us/library/windows/desktop/bb787595%28v=vs.85%29.aspx
-		return DllCall("User32.dll\SetScrollInfo", "Ptr", this._hwnd, "Int", fnBar, "Ptr", lpsi[], "UInt", fRedraw, "UInt")
+		return DllCall("User32.dll\SetScrollInfo", "Ptr", hwnd, "Int", fnBar, "Ptr", lpsi[], "UInt", fRedraw, "UInt")
 	}
 	
-	_ScrollWindow(XAmount, YAmount){
+	_ScrollWindow(XAmount, YAmount, hwnd := 0){
+		if (!hwnd){
+			hwnd := this._hwnd
+		}
+		tooltip % "Scrolling " hwnd
 		; https://msdn.microsoft.com/en-us/library/windows/desktop/bb787591%28v=vs.85%29.aspx
-		return DllCall("User32.dll\ScrollWindow", "Ptr", this._hwnd, "Int", XAmount, "Int", YAmount, "Ptr", 0, "Ptr", 0)
+		return DllCall("User32.dll\ScrollWindow", "Ptr", hwnd, "Int", XAmount, "Int", YAmount, "Ptr", 0, "Ptr", 0)
 	}
 
 	; Returns a RECT describing the size of the window
@@ -229,26 +243,43 @@ class _CScrollGui extends _CGui {
 		return ret
 	}
 	
+	_GetParent(hwnd := 0){
+		if (hwnd = 0){
+			hwnd := this._hwnd
+		}
+		return DllCall("GetParent", "Uint", hwnd, "Uint")
+	}
 	
-	_Scroll(WP, LP, Msg, HWND) {
+	; Message handlers come here when a scroll bar is dragged
+	_ScrollFilter(WParam, lParam, Msg, hwnd){
+		If ((this._hwnd) != hwnd){
+			return
+		}
+		this._Scroll(WParam, lParam, Msg)
+	}
+	
+	_Scroll(WP, LP, Msg, HWND := 0) {
 		;ToolTip, % "wp: " WP ", lp: " LP ", msg: " msg ", h: " hwnd
 		Static SB_LINEMINUS := 0, SB_LINEPLUS := 1, SB_PAGEMINUS := 2, SB_PAGEPLUS := 3, SB_THUMBTRACK := 5
 		Static WM_HSCROLL := 0x0114, WM_VSCROLL := 0x0115
 		Static SIF_POS := 0x4
 		
-		; HotkeyIt Fix
-		If ((this._hwnd+0) != HWND){
-			return
+		if (hwnd = 0){
+			hwnd := this._hwnd
+		} else If ((this._hwnd) != HWND){
+			;MsgBox % "hwnd passed - scroll wheel hit"
+			;return
 		}
+		;MsgBox % "Hwnd " format("{:x}",hwnd) " sending message to window " this._hwnd " - processing"
 		
 		If (LP <> 0) {
 			Return
 		}
 		SB := (Msg = WM_HSCROLL ? 0 : 1) ; SB_HORZ : SB_VERT
 		SC := WP & 0xFFFF
-		SD := (Msg = WM_HSCROLL ? This.LineH : This.LineV)
+		SD := (Msg = WM_HSCROLL ? This._LineH : This._LineV)
 		SI := 0
-		If (!This._GetScrollInfo(SB, SI)){
+		If (!This._GetScrollInfo(SB, SI, hwnd)){
 			Return
 		}
 		PA := PN := SI.nPos
@@ -264,15 +295,16 @@ class _CScrollGui extends _CGui {
 			PN := SI.nTrackPos
 		} 
 		If (PA = PN) {
+			SoundBeep
 			Return 0
 		}
 		
 		lpsi := this._BlankScrollInfo()
 		lpsi.fMask := SIF_POS
 		lpsi.nPos := PN
-		this._SetScrollInfo(SB, lpsi)
+		this._SetScrollInfo(SB, lpsi,, hwnd)
 		
-		This._GetScrollInfo(SB, SI)
+		This._GetScrollInfo(SB, SI, hwnd)
 		PN := SI.nPos
 		If (SB = 0) {
 			This._Scroll_PosH := PN
@@ -287,7 +319,7 @@ class _CScrollGui extends _CGui {
 		} Else {
 			VS := PA - PN
 		}
-		this._ScrollWindow(HS,VS)
+		this._ScrollWindow(HS, VS, hwnd)
 		Return 0
    }
 
@@ -296,12 +328,44 @@ class _CScrollGui extends _CGui {
 		Static SB_LINEMINUS := 0, SB_LINEPLUS := 1
 		Static WM_MOUSEWHEEL := 0x020A, WM_MOUSEHWHEEL := 0x020E
 		Static WM_HSCROLL := 0x0114, WM_VSCROLL := 0x0115
+		
+		Static SB_HORZ := 0, SB_VERT = 1
+		
+		MouseGetPos,,,,hcurrent,2
+		;MsgBox % hcurrent ": " this._GetScrollInfo(SB_VERT, lpsi, hcurrent)
+		;return
+		has_scrollbars := this._GetScrollInfo(SB_VERT, lpsi, hcurrent)
+		while (!has_scrollbars){
+			;MsgBox % hcurrent
+			hcurrent := this._GetParent(hcurrent)
+			has_scrollbars := this._GetScrollInfo(SB_VERT, lpsi, hcurrent)
+			if (hcurrent = 0){
+				break
+			}
+		}
+		;MsgBox % lpsi.nMax
+		;MsgBox % "Final: " Format("{:x}", hcurrent) ", Type: " _CGui._HwndLookup[hcurrent]
+		;this._Scroll(sb, 0, MSG, hcurrent)
+		;return 0
+		;return
+		;this.base.__Class._HwndLookup
+		/*
+		if (H != this._hwnd){
+			MsgBox % "Hwnd " format("{:x}",H) " - " _CGui._HwndLookup[H]._type " - being processed by window " this._hwnd " ( " _CGui._HwndLookup[this._hwnd]._type ") - ignoring"
+			return
+		}
+		MsgBox % "Hwnd " format("{:x}",H)  " (" _CGui._HwndLookup[H]._type ") being processed by window " this._hwnd " ( " _CGui._HwndLookup[this._hwnd]._type ") - processing"
+		return
+		*/
 		If (Msg = WM_MOUSEWHEEL) && This._Scroll_UseShift && (WP & MK_SHIFT) {
 			Msg := WM_MOUSEHWHEEL
 		}
 		MSG := (Msg = WM_MOUSEWHEEL ? WM_VSCROLL : WM_HSCROLL)
 		SB := ((WP >> 16) > 0x7FFF) || (WP < 0) ? SB_LINEPLUS : SB_LINEMINUS
-		Return this._Scroll(sb, 0, MSG, H)
+		;Return this._Scroll(sb, 0, MSG)
+		;this._Scroll(sb, 0, MSG, hcurrent)
+		_CGui._HwndLookup[hcurrent]._Scroll(sb, 0, MSG, hcurrent)
+		return 0
 	}
 	
 	_BlankScrollInfo(){
@@ -313,6 +377,7 @@ class _CScrollGui extends _CGui {
 
 ; Wrap AHK functionality in a standardized, easy to use, syntactically similar class
 Class _CGui {
+	_type := "w"
 	; equivalent to Gui, New, <params>
 	; put parent as param 1
 	__New(parent := 0, Param2 := "", Param3 := "", Param4 := ""){
@@ -321,6 +386,10 @@ Class _CGui {
 			; parent passed
 		}
 		this.Gui("new", Param2, Param3, Param4)
+	}
+	
+	__Delete() {
+		this.base.__Class._HwndLookup.Remove(this._hwnd)
 	}
 	
 	Gui(aParams*){
@@ -334,6 +403,10 @@ Class _CGui {
 		if (aParams[1] = "new"){
 			Gui, new, % "hwndhwnd " aParams[2], % aParams[3], % aParams[4]
 			this._hwnd := hwnd
+			if (!IsObject(_CGui._HwndLookup)){
+				_CGui._HwndLookup := {}
+			}
+			_CGui._HwndLookup[hwnd] := this
 		} else if (aParams[1] = "add") {
 			if (opts.flags.v || opts.flags.g){
 				; v-label or g-label passed old-school style
