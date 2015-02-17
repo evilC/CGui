@@ -72,12 +72,89 @@ class _CScrollGui extends _CGui {
 		this.OnMessage(WM_VSCROLL, fn)
 		this.OnMessage(WM_HSCROLL, fn)
 		
-		fn := bind(this.AdjustToParent, this)
+		fn := bind(this._GuiResized, this)
 		this.OnMessage(WM_SIZE, fn, 999)
 		;fn := bind(this._ContentsResized, this)
 		;this.OnMessage(WM_SIZE, fn, 999)
 	}
 	
+	; This window resized - If scrollbar(s) all the way at the end and you size up, child needs to be scrolled in the direction of the size up.
+	_GuiResized(WParam:= 0, lParam := 0, Msg := 0, hwnd := 0){
+		static debug := 1
+		Static SB_HORZ := 0, SB_VERT = 1
+		static SIF_PAGE := 0x2
+		static WindowRECT := 0
+		
+		WindowRECT := this._GetClientRect()
+		if (WindowRECT.Right != this._width || WindowRECT.Bottom != this._height){
+			; Window changed since we were last in here, or this is first time in here.
+			this._width := WindowRECT.Right
+			this._height := WindowRECT.Bottom
+		} else {
+			if (debug) {
+				OutputDebug, % "[ " this._FormatHwnd() " ] " this._FormatFuncName(A_ThisFunc) "   - Aborting as WindowRECT has not changed - " this._SerializeWH(WindowRECT)
+			}
+			return
+		}
+
+		if (debug) {
+			OutputDebug, % "[ " this._FormatHwnd() " ] " this._FormatFuncName(A_ThisFunc) "   - Window changed size to (w,h): " this._SerializeWH(WindowRECT)
+		}
+
+		if (hwnd = 0){
+			hwnd := this._hwnd
+			if (debug){
+				OutputDebug, % "[ " this._FormatHwnd() " ] " this._FormatFuncName(A_ThisFunc) "   - Called without params - hwnd: " this.FormatHex(hwnd)
+			}
+		} else if (this._hwnd != hwnd){
+			; message not for this window
+			return
+		} else {
+			if (debug) {
+				OutputDebug, % "[ " this._FormatHwnd() " ] " this._FormatFuncName(A_ThisFunc) "   - Called with params - hwnd: " this.FormatHex(hwnd)
+			}
+		}
+		
+		CanvasRECT := this._GetClientSize()
+		Width := WindowRECT.Right
+		Height := WindowRECT.Bottom
+		If (A_EventInfo <> 1) {
+			SH := SV := 0
+			If This._Scroll_H {
+				If (Width <> This._Scroll_Width) {
+					lpsi := this._BlankScrollInfo()
+					lpsi.fMask := SIF_PAGE
+					lpsi.nPage := Width + 1
+					This._SetScrollInfo(SB_HORZ, lpsi)
+
+					This._Scroll_Width := Width
+					This._GetScrollInfo(SB_HORZ, SI)
+					PosH := SI.nPos
+					SH := This._Scroll_PosH - PosH
+					This._Scroll_PosH := PosH
+				}
+			}
+			If This._Scroll_V {
+				If (Height <> This._Scroll_Height) {
+					lpsi := this._BlankScrollInfo()
+					lpsi.fMask := SIF_PAGE
+					lpsi.nPage := Height + 1
+					This._SetScrollInfo(SB_VERT, lpsi)
+					
+					This._Scroll_Height := Height
+					This._GetScrollInfo(SB_VERT, SI)
+					PosV := SI.nPos
+					SV := This._Scroll_PosV - PosV
+					This._Scroll_PosV := PosV
+				}
+			}
+			if (SV || SH){
+				this._ScrollWindow(SH, SV)
+			}
+		}
+	}
+
+	/*
 	; AKA Window resized - If scrollbar(s) all the way at the end and you size up, child needs to be scrolled in the direction of the size up.
 	AdjustToParent(WParam:= 0, lParam := 0, Msg := 0, hwnd := 0){
 		static debug := 0
@@ -153,6 +230,7 @@ class _CScrollGui extends _CGui {
 			}
 		}
 	}
+	*/
 	
 	; The contents of a Gui changed size (eg Controls were added to a Gui
 	_ContentsResized(WParam := 0, lParam := 0, msg := 0, hwnd := 0){
@@ -197,6 +275,7 @@ class _CScrollGui extends _CGui {
 		this._AdjustScrollBars()
 	}
 	
+	; Adjust scrollbars to current window / client height.
 	_AdjustScrollBars(){
 		Static SB_HORZ := 0, SB_VERT = 1
 		static SIF_ALL := 0x17
@@ -594,7 +673,7 @@ Class _CGui {
 			}
 			Gui, new, % "hwndhwnd " aParams[1], % aParams[3], % aParams[4]
 			this._hwnd := hwnd
-			; Call AdjustToParent() here?
+			; Call _GuiResized() here?
 			_CGui._HwndLookup[hwnd] := this
 		} else if (aParams[1] = "add") {
 			if (this._GuiOptions.flags.v || this._GuiOptions.flags.g){
