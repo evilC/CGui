@@ -85,6 +85,9 @@ class _CScrollGui extends _CGui {
 		static SIF_PAGE := 0x2
 		;static WindowRECT := 0
 		
+		; obj vars used:
+		; this._width, this._height: GET / SET
+		
 		; Ignore message if it is not for this window
 		if (hwnd = 0){
 			hwnd := this._hwnd
@@ -118,7 +121,14 @@ class _CScrollGui extends _CGui {
 	; The contents of a Gui changed size (eg Controls were added to a Gui
 	_ContentsResized(WParam := 0, lParam := 0, msg := 0, hwnd := 0){
 		static debug := 0
-
+		
+		; obj vars used:
+		; this._Scroll_Width, this._Scroll_Height - GET / SET
+		; this._Client_Width, this._Client_Height - GET / SET
+		
+		; this._LineH - SET
+		; this._LineV - SET
+		
 		; Determine if this message is for us
 		if (hwnd = 0){
 			hwnd := this._hwnd
@@ -130,7 +140,7 @@ class _CScrollGui extends _CGui {
 			return
 		}
 		
-		WindowRECT := this._GetClientRect()
+		WindowRECT := this._GetClientRect()	; remove? _GuiResized should set _width and _height.
 		CanvasRECT := this._GetClientSize()
 		; Use _Scroll_Width not _Width, as that that indicates the last size of WindowRECT that this function saw
 		if (this._Scroll_Width == WindowRECT.Right && this._Scroll_Height == WindowRECT.Bottom && this._Client_Width == CanvasRECT.Right && this._Client_Height == CanvasRECT.Bottom){
@@ -151,10 +161,8 @@ class _CScrollGui extends _CGui {
 		this._Scroll_Width := WindowRECT.Right
 		this._Scroll_Height := WindowRECT.Bottom
 		
-		this._MaxH := WindowRECT.Right
-		this._MaxV := WindowRECT.Bottom
-		this._LineH := Ceil(this._MaxH / 20)
-		this._LineV := Ceil(this._MaxV / 20)
+		this._LineH := Ceil(WindowRECT.Right / 20)
+		this._LineV := Ceil(WindowRECT.Bottom / 20)
 		this._ScrollBarClientSized()
 	}
 	
@@ -189,6 +197,8 @@ class _CScrollGui extends _CGui {
 		static debug := 1
 		Static SB_HORZ := 0, SB_VERT = 1
 		static SIF_PAGE := 0x2
+		; obj vars used:
+		; this._width, this._height - GET
 
 		; Update Scroll bars and Drag window on size up if needed.
 		If (A_EventInfo <> 1) {
