@@ -75,7 +75,6 @@ class _CScrollGui extends _CGui {
 	Gui(aParams*){
 		; Whenever a gui command runs, adjust the scrollbars
 		base.Gui(aParams*)
-		;this.AdjustToChild()
 		if (aParams[1] = "add"){
 			this._ChildSizeChanged()
 		}
@@ -85,7 +84,7 @@ class _CScrollGui extends _CGui {
 	; Called when the size of a window changes.
 	; Also performs a scroll if a scrollbar is at it's end and we are sizing up - in this case it "drags" the child window with it as it sizes up
 	_WindowSizeChanged(WParam:= 0, lParam := 0, Msg := 0, hwnd := 0){
-		static debug := 1
+		static debug := 0
 		Static SB_HORZ := 0, SB_VERT = 1
 		static SIF_PAGE := 0x2
 		;static WindowRECT := 0
@@ -153,7 +152,7 @@ class _CScrollGui extends _CGui {
 	
 	; The Size of the Child Canvas changed ( Something was added to this Gui)
 	_ChildSizeChanged(WParam := 0, lParam := 0, msg := 0, hwnd := 0){
-		static debug := 1
+		static debug := 0
 		Static SB_HORZ := 0, SB_VERT = 1
 		static SIF_ALL := 0x17
 		;static WindowRECT, CanvasRECT
@@ -560,7 +559,9 @@ Class _CGui {
 	}
 	
 	; Wraps GuiControl to use hwnds and function binding etc
+	; All ACTUAL calls to GuiControl COMMAND should be in here
 	GuiControl(aParams*){
+		static debug := 1
 		m := SubStr(aParams[1],1,1)
 		if (m = "+" || m = "-"){
 			; Options
@@ -572,10 +573,16 @@ Class _CGui {
 				aParams[2]._glabel := fn
 				; Bind glabel event to _OnChange method
 				fn := bind(aParams[2]._OnChange,aParams[2])
+				if (debug){
+					OutputDebug, % "[" A_ThisFunc " : " this._hwnd "] Binding GuiControl " aParams[2]._hwnd
+				}
 				GuiControl % aParams[1], % aParams[2]._hwnd, % fn
 				return this
 			}
 		} else {
+			if (debug){
+				OutputDebug, % "[" A_ThisFunc " : " this._hwnd "] Executing GuiControl " aParams[2]._hwnd
+			}
 			GuiControl, % aParams[1], % aParams[2]._hwnd, % aParams[3]
 			return this
 		}
