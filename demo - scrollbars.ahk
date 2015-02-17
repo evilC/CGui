@@ -6,7 +6,7 @@
 #SingleInstance force
 #include <_Struct>
 #include <WinStructs>
-#include <CGui>
+#include CGui.ahk
 #include sample inihandler.ahk
 
 ; Include skinning library if it exists.

@@ -4,7 +4,7 @@
 ; Text box contents are persistent across runs
 
 #SingleInstance force
-#include <CGui>
+#include CGui.ahk
 #include sample inihandler.ahk
 
 ; Include skinning library if it exists.

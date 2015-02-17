@@ -2,7 +2,7 @@
 ; Example Script using CGui ===============================================
 
 #SingleInstance force
-#include <CGui>
+#include CGui.ahk
 #include sample inihandler.ahk
 
 ; Include skinning library if it exists.
