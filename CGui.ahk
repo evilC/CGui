@@ -86,7 +86,7 @@ class _CScrollGui extends _CGui {
 		static SIF_PAGE := 0x2
 		
 		; obj vars used:
-		; this._width, this._height: GET / SET, Used By: _SetSScrollbarPage(GET)  - SEEMS LEGIT
+		; this._width, this._height: GET / SET, Used By: _GuiPageSetScrollbar(GET)  - SEEMS LEGIT
 		
 		; Ignore message if it is not for this window
 		if (hwnd = 0){
@@ -99,7 +99,7 @@ class _CScrollGui extends _CGui {
 			return
 		}
 
-		PageRECT := this._GetClientRect()
+		PageRECT := this._GuiPageGetRect()
 		if (PageRECT.Right != this._width || PageRECT.Bottom != this._height){
 			; Window changed since we were last in here, or this is first time in here.
 			this._width := PageRECT.Right
@@ -115,7 +115,7 @@ class _CScrollGui extends _CGui {
 			OutputDebug, % "[ " this._FormatHwnd() " ] " this._FormatFuncName(A_ThisFunc) "   - Window changed size to (w,h): " this._SerializeWH(PageRECT)
 		}
 
-		this._SetSScrollbarPage()
+		this._GuiPageSetScrollbar()
 	}
 
 	; The contents of a Gui changed size (eg Controls were added to a Gui)
@@ -123,8 +123,8 @@ class _CScrollGui extends _CGui {
 		static debug := 0
 		
 		; obj vars used:
-		; this._GuiPageWidth, this._GuiPageHeight - GET / SET - Used in _SetScrollbarRange (GET), _SetSScrollbarPage (GET/SET), 
-		; this._GuiRangeWidth, this._GuiRangeHeight - GET / SET - Used in _SetScrollbarRange (GET)
+		; this._GuiPageWidth, this._GuiPageHeight - GET / SET - Used in _GuiRangeSetScrollbar (GET), _GuiPageSetScrollbar (GET/SET), 
+		; this._GuiRangeWidth, this._GuiRangeHeight - GET / SET - Used in _GuiRangeSetScrollbar (GET)
 		; this._LineH, this._LineV - SET, Used in _Scroll (GET)
 		
 		; Determine if this message is for us
@@ -138,8 +138,8 @@ class _CScrollGui extends _CGui {
 			return
 		}
 		
-		PageRECT := this._GetClientRect()	; remove? _GuiPageChanged should set _width and _height.
-		RangeRECT := this._GetClientSize()
+		PageRECT := this._GuiPageGetRect()	; remove? _GuiPageChanged should set _width and _height.
+		RangeRECT := this._GuiRangeGetRect()
 		; Use _GuiPageWidth not _Width, as that that indicates the last size of PageRECT that this function saw
 		if (this._GuiPageWidth == PageRECT.Right && this._GuiPageHeight == PageRECT.Bottom && this._GuiRangeWidth == RangeRECT.Right && this._GuiRangeHeight == RangeRECT.Bottom){
 			; Client Size did not change
@@ -161,7 +161,7 @@ class _CScrollGui extends _CGui {
 		
 		this._LineH := Ceil(PageRECT.Right / 20)
 		this._LineV := Ceil(PageRECT.Bottom / 20)
-		this._SetScrollbarRange()
+		this._GuiRangeSetScrollbar()
 	}
 	
 	; Range / Page merge notes
@@ -173,7 +173,7 @@ class _CScrollGui extends _CGui {
 	; Adjust scrollbars due to change in RANGE.
 	; RANGE = the TOTAL area this Window contains (ie the size of the RECT encompassing all it's child objects)
 	; If the RANGE is bigger than the PAGE, scrollbars need to be shown
-	_SetScrollbarRange(){
+	_GuiRangeSetScrollbar(){
 		static debug := 1
 		
 		; obj vars used
@@ -205,7 +205,7 @@ class _CScrollGui extends _CGui {
 	; Update scrollbars due to PAGE resize AND DRAG ON PAGE INCREASE IF NEEDED
 	; If page at maximum extent (scrollbar all the way to right or bottom) when you resize down/right (get bigger), the Contents needs to "drag" (move) with the cursor.
 	; PAGE = The "Window" through which you can see a portion of the RANGE.
-	_SetSScrollbarPage(){
+	_GuiPageSetScrollbar(){
 		static debug := 1
 		Static SB_HORZ := 0, SB_VERT = 1
 		static SIF_PAGE := 0x2
@@ -306,14 +306,14 @@ class _CScrollGui extends _CGui {
 	}
 
 	; Returns a RECT describing the size of the window
-	_GetClientRect(){
+	_GuiPageGetRect(){
 		lpRect := new _Struct(WinStructs.RECT)
 		DllCall("User32.dll\GetClientRect", "Ptr", This._HWND, "Ptr", lpRect[])
 		return lpRect
 	}
 
 	; Returns a RECT encompassing all GuiControls and GUIs that are a child of this GUI
-	_GetClientSize(){
+	_GuiRangeGetRect(){
 		Critical
 		
 		DHW := A_DetectHiddenWindows
