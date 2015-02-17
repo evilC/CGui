@@ -4,8 +4,7 @@
 ; Text box contents are persistent across runs
 
 #SingleInstance force
-#include <_Struct>
-#include <WinStructs>
+
 #include CGui.ahk
 #include sample inihandler.ahk
 

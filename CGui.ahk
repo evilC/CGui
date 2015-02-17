@@ -4,6 +4,9 @@
 ; Author: evilC@evilC.com
 ; Scrolling code by Just Me.
 
+#include <_Struct>
+#include <WinStructs>
+
 ; Gui Controls
 ;Class _CGuiControl extends _CGui {
 Class _CGuiControl extends _CScrollGui {
