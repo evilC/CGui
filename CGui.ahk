@@ -83,7 +83,6 @@ class _CScrollGui extends _CGui {
 		static debug := 0
 		Static SB_HORZ := 0, SB_VERT = 1
 		static SIF_PAGE := 0x2
-		;static WindowRECT := 0
 		
 		; obj vars used:
 		; this._width, this._height: GET / SET
@@ -123,11 +122,9 @@ class _CScrollGui extends _CGui {
 		static debug := 0
 		
 		; obj vars used:
-		; this._Scroll_Width, this._Scroll_Height - GET / SET
-		; this._Client_Width, this._Client_Height - GET / SET
-		
-		; this._LineH - SET
-		; this._LineV - SET
+		; this._Scroll_Width, this._Scroll_Height - GET / SET - Used in _ScrollBarClientSized (GET), _ScrollBarGuiSized (GET/SET), 
+		; this._Client_Width, this._Client_Height - GET / SET - Used in _ScrollBarClientSized (GET)
+		; this._LineH, this._LineV - SET, Used in _Scroll (GET)
 		
 		; Determine if this message is for us
 		if (hwnd = 0){
