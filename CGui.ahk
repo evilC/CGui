@@ -247,6 +247,8 @@ class _CScrollGui extends _CGui {
 
 	; Returns a RECT encompassing all GuiControls and GUIs that are a child of this GUI
 	_GetClientSize(){
+		Critical
+		
 		DHW := A_DetectHiddenWindows
 		DetectHiddenWindows, On
 		
