@@ -82,7 +82,6 @@ class _CScrollGui extends _CGui {
 	
 	; AKA Window resized - If scrollbar(s) all the way at the end and you size up, child needs to be scrolled in the direction of the size up.
 	AdjustToParent(WParam:= 0, lParam := 0, Msg := 0, hwnd := 0){
-		Critical
 		static debug := 1
 		Static SB_HORZ := 0, SB_VERT = 1
 		static SIF_PAGE := 0x2
@@ -158,7 +157,6 @@ class _CScrollGui extends _CGui {
 	
 	; Normal resize routine - Just adjust the scrollbars.
 	AdjustToChild(WParam := 0, lParam := 0, msg := 0, hwnd := 0){
-		Critical
 		static debug := 1
 		Static SB_HORZ := 0, SB_VERT = 1
 		static SIF_ALL := 0x17
@@ -330,7 +328,6 @@ class _CScrollGui extends _CGui {
 	}
 	
 	_Scroll(WP, LP, Msg, HWND := 0) {
-		Critical
 		;ToolTip, % "wp: " WP ", lp: " LP ", msg: " msg ", h: " hwnd
 		Static SB_LINEMINUS := 0, SB_LINEPLUS := 1, SB_PAGEMINUS := 2, SB_PAGEPLUS := 3, SB_THUMBTRACK := 5
 		Static WM_HSCROLL := 0x0114, WM_VSCROLL := 0x0115
