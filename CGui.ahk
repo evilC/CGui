@@ -123,8 +123,8 @@ class _CScrollGui extends _CGui {
 		static debug := 0
 		
 		; obj vars used:
-		; this._Scroll_Width, this._Scroll_Height - GET / SET - Used in _SetScrollbarRange (GET), _SetSScrollbarPage (GET/SET), 
-		; this._Client_Width, this._Client_Height - GET / SET - Used in _SetScrollbarRange (GET)
+		; this._GuiPageWidth, this._GuiPageHeight - GET / SET - Used in _SetScrollbarRange (GET), _SetSScrollbarPage (GET/SET), 
+		; this._GuiRangeWidth, this._GuiRangeHeight - GET / SET - Used in _SetScrollbarRange (GET)
 		; this._LineH, this._LineV - SET, Used in _Scroll (GET)
 		
 		; Determine if this message is for us
@@ -140,8 +140,8 @@ class _CScrollGui extends _CGui {
 		
 		WindowRECT := this._GetClientRect()	; remove? _GuiPageChanged should set _width and _height.
 		CanvasRECT := this._GetClientSize()
-		; Use _Scroll_Width not _Width, as that that indicates the last size of WindowRECT that this function saw
-		if (this._Scroll_Width == WindowRECT.Right && this._Scroll_Height == WindowRECT.Bottom && this._Client_Width == CanvasRECT.Right && this._Client_Height == CanvasRECT.Bottom){
+		; Use _GuiPageWidth not _Width, as that that indicates the last size of WindowRECT that this function saw
+		if (this._GuiPageWidth == WindowRECT.Right && this._GuiPageHeight == WindowRECT.Bottom && this._GuiRangeWidth == CanvasRECT.Right && this._GuiRangeHeight == CanvasRECT.Bottom){
 			; Client Size did not change
 			if (debug) {
 				OutputDebug, % "[ " this._FormatHwnd() " ] " this._FormatFuncName(A_ThisFunc) "   - Aborting as WindowRECT and CanvasRECT have not changed - " this._SerializeWH(WindowRECT) " / " this._SerializeWH(CanvasRECT)
@@ -153,11 +153,11 @@ class _CScrollGui extends _CGui {
 		}
 		
 		; Set object vars
-		this._Client_Width := CanvasRECT.Right
-		this._Client_Height := CanvasRECT.Bottom
+		this._GuiRangeWidth := CanvasRECT.Right
+		this._GuiRangeHeight := CanvasRECT.Bottom
 		
-		this._Scroll_Width := WindowRECT.Right
-		this._Scroll_Height := WindowRECT.Bottom
+		this._GuiPageWidth := WindowRECT.Right
+		this._GuiPageHeight := WindowRECT.Bottom
 		
 		this._LineH := Ceil(WindowRECT.Right / 20)
 		this._LineV := Ceil(WindowRECT.Bottom / 20)
@@ -165,10 +165,10 @@ class _CScrollGui extends _CGui {
 	}
 	
 	; Range / Page merge notes
-	; this._Client_Width / Height is a CanvasRECT = RANGE
-	; this._Scroll_Width / Height is a WindowRECT = PAGE
+	; this._GuiRangeWidth / Height is a CanvasRECT = RANGE
+	; this._GuiPageWidth / Height is a WindowRECT = PAGE
 
-	; merge _Client_Height / _Client_Width and _Scroll_Height / _Scroll_Width on to one Scrollinfo object
+	; merge _GuiRangeHeight / _GuiRangeWidth and _GuiPageHeight / _GuiPageWidth on to one Scrollinfo object
 	
 	; Adjust scrollbars due to change in RANGE.
 	; RANGE = the TOTAL area this Window contains (ie the size of the RECT encompassing all it's child objects)
@@ -177,9 +177,9 @@ class _CScrollGui extends _CGui {
 		static debug := 1
 		
 		; obj vars used
-		; this._Client_Width / this._Client_Height (GET), Used by _GuiRangeChanged (GET/SET), which is the parent to this call
+		; this._GuiRangeWidth / this._GuiRangeHeight (GET), Used by _GuiRangeChanged (GET/SET), which is the parent to this call
 		
-		; Cannot remove this._Scroll_Width / Height from this func until we make sure nPage is set for the scrollbar
+		; Cannot remove this._GuiPageWidth / Height from this func until we make sure nPage is set for the scrollbar
 		Static SB_HORZ := 0, SB_VERT = 1
 		static SIF_ALL := 0x17
 		static SIF_RANGE := 0x1
@@ -189,16 +189,16 @@ class _CScrollGui extends _CGui {
 		lpsi.fMask := SIF_ALL
 		;lpsi.fMask := SIF_RANGE
 		lpsi.nMin := 0
-		lpsi.nMax := this._Client_Height
-		lpsi.nPage := this._Scroll_Height
+		lpsi.nMax := this._GuiRangeHeight
+		lpsi.nPage := this._GuiPageHeight
 		this._SetScrollInfo(SB_VERT, lpsi)
 		
-		lpsi.nMax := this._Client_Width
-		lpsi.nPage := this._Scroll_Width
+		lpsi.nMax := this._GuiRangeWidth
+		lpsi.nPage := this._GuiPageWidth
 		this._SetScrollInfo(SB_HORZ, lpsi)
 		
 		if (debug) {
-			OutputDebug, % "[ " this._FormatHwnd() " ] " this._FormatFuncName(A_ThisFunc) "   - CLIENT SIZED - (w,h): " this._Client_Width "," this._Client_Height
+			OutputDebug, % "[ " this._FormatHwnd() " ] " this._FormatFuncName(A_ThisFunc) "   - CLIENT SIZED - (w,h): " this._GuiRangeWidth "," this._GuiRangeHeight
 		}
 	}
 
@@ -212,7 +212,7 @@ class _CScrollGui extends _CGui {
 		; obj vars used:
 		; this._width, this._height - GET, Used by: _GuiPageChanged(GET/SET) - SEEMS LEGIT
 		
-		; This._Scroll_Width . This._Scroll_Height (GET / SET), used by _GuiRangeChanged (GET/SET)
+		; This._GuiPageWidth . This._GuiPageHeight (GET / SET), used by _GuiRangeChanged (GET/SET)
 		; This._Scroll_PosH / This._Scroll_PosV (GET/SET), used by _Scroll (_SET)
 
 		; Update Scroll bars and Drag window on size up if needed.
@@ -221,7 +221,7 @@ class _CScrollGui extends _CGui {
 			DragH := DragV := 0
 			If This._Scroll_H {
 				; Horizontal scroll bars are enabled
-				If (this._width <> This._Scroll_Width) {
+				If (this._width <> This._GuiPageWidth) {
 					; Window width doesn't match client area width
 					
 					; Update Horizontal scroll bar SIZE
@@ -231,7 +231,7 @@ class _CScrollGui extends _CGui {
 					This._SetScrollInfo(SB_HORZ, lpsi)
 
 					; Update Scroll vars
-					This._Scroll_Width := this._width
+					This._GuiPageWidth := this._width
 					
 					; Get new scroll info
 					This._GetScrollInfo(SB_HORZ, SI)
@@ -245,7 +245,7 @@ class _CScrollGui extends _CGui {
 			}
 			If This._Scroll_V {
 				; Vertical scroll wheels are enabled
-				If (this._height <> This._Scroll_Height) {
+				If (this._height <> This._GuiPageHeight) {
 					; Window Height doesn't match client height
 					
 					; Update Vertical scroll bar SIZE
@@ -255,7 +255,7 @@ class _CScrollGui extends _CGui {
 					This._SetScrollInfo(SB_VERT, lpsi)
 					
 					; Update Scroll vars
-					This._Scroll_Height := this._height
+					This._GuiPageHeight := this._height
 					
 					; Get new scroll info
 					This._GetScrollInfo(SB_VERT, SI)
