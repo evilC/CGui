@@ -112,42 +112,56 @@ class _CScrollGui extends _CGui {
 			OutputDebug, % "[ " this._FormatHwnd() " ] " this._FormatFuncName(A_ThisFunc) "   - Window changed size to (w,h): " this._SerializeWH(WindowRECT)
 		}
 
+		;this._UpdateAndDrag()
+		; Update Scroll bars and Drag window on size up if needed.
 		If (A_EventInfo <> 1) {
 			; Filter SendMessage / PostMessage? Not sure what point of this conditional is
 			DragH := DragV := 0
 			If This._Scroll_H {
 				; Horizontal scroll bars are enabled
-				If (WindowRECT.Right <> This._Scroll_Width) {
+				If (this._width <> This._Scroll_Width) {
 					; Window width doesn't match client area width
 					
 					; Update scroll bar
 					lpsi := this._BlankScrollInfo()
 					lpsi.fMask := SIF_PAGE
-					lpsi.nPage := WindowRECT.Right + 1
+					lpsi.nPage := this._width + 1
 					This._SetScrollInfo(SB_HORZ, lpsi)
 
 					; Update Scroll vars
-					This._Scroll_Width := WindowRECT.Right
+					This._Scroll_Width := this._width
+					
+					; Get new scroll info
 					This._GetScrollInfo(SB_HORZ, SI)
+					
+					; Set drag amounr
 					DragH := This._Scroll_PosH - SI.nPos
+					
+					; Update scroll bar pos amount
 					This._Scroll_PosH := SI.nPos
 				}
 			}
 			If This._Scroll_V {
 				; Vertical scroll wheels are enabled
-				If (WindowRECT.Bottom <> This._Scroll_Height) {
+				If (this._height <> This._Scroll_Height) {
 					; Window Height doesn't match client height
 					
 					; Update scroll bar
 					lpsi := this._BlankScrollInfo()
 					lpsi.fMask := SIF_PAGE
-					lpsi.nPage := WindowRECT.Bottom + 1
+					lpsi.nPage := this._height + 1
 					This._SetScrollInfo(SB_VERT, lpsi)
 					
 					; Update Scroll vars
-					This._Scroll_Height := WindowRECT.Bottom
+					This._Scroll_Height := this._height
+					
+					; Get new scroll info
 					This._GetScrollInfo(SB_VERT, SI)
+					
+					; Set Drag amount
 					DragV := This._Scroll_PosV - SI.nPos
+					
+					; Update Scrollbar pos var
 					This._Scroll_PosV := SI.nPos
 				}
 			}
