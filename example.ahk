@@ -19,7 +19,7 @@ GuiClose:
 Class MyClass extends CWindow {
 	__New(){
 		; Call base method of class to create window
-		base.__New()
+		base.__New(0, "+Resize")
 		this.GUI_WIDTH := 200
 		; Start using GUI commands
 		this.Gui("Margin",5,5)
@@ -52,7 +52,7 @@ Class MyClass extends CWindow {
 		this.ChildWindow.Gui("Show", "x2 y150 w" this.GUI_WIDTH " h100")
 		
 		; Show the main Gui
-		this.Gui("Show", "h260","Class Test")
+		this.Gui("Show", "y0 w220 h300","Class Test")
 	}
 	
 	Test(){

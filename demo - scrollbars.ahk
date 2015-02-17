@@ -31,7 +31,7 @@ Class MyClass extends CWindow {
 		this.ChildWindow1.Gui("Show", "x100 y100 w" this.GUI_WIDTH " h200")
 		this.ChildWindow1.AdjustToChild()
 		
-		this.Gui("Show", "w400 h400","Scroll Demo")
+		this.Gui("Show", "y0 w400 h400","Scroll Demo")
 	}
 	
 	SendMyString(){

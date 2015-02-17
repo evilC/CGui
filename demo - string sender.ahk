@@ -19,7 +19,7 @@ GuiClose:
 
 Class MyClass extends CWindow {
 	__New(){
-		base.__New()
+		base.__New(0)
 		this.GUI_WIDTH := 200
 		this.Gui("Margin",5,5)
 		this.Gui("Add", "Text", "Center xm ym w" this.GUI_WIDTH, "String to Send on F12")
@@ -29,7 +29,7 @@ Class MyClass extends CWindow {
 		fn := Bind(this.SendMyString, this)
 		hotkey, F12, % fn, On
 		
-		this.Gui("Show",,"String Sender")
+		this.Gui("Show", "y0 w210 h75","String Sender")
 	}
 	
 	SendMyString(){
