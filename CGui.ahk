@@ -38,7 +38,13 @@ Class _CGuiControl extends _CScrollGui {
 	}
 	
 	__Set(aParam, aValue){
+		static debug := 1
 		if (aParam = "value"){
+			; guicontrol called #1
+			if (debug && _CGui_Global_Debug) {
+				OutputDebug, % "[" A_ThisFunc " : " this._hwnd "] GuiControl " aParams[2] " __Set Calling GuiControl method on parent (" this._parent._hwnd ")"
+			}
+			; guicontrol called 2
 			return this._parent.GuiControl(,this,aValue)
 		}
 	}
@@ -593,6 +599,7 @@ Class _CGui {
 				if (debug && _CGui_Global_Debug) {
 					OutputDebug, % "[" A_ThisFunc " : " this._hwnd "] Binding GuiControl " aParams[2]._hwnd
 				}
+				; Guicontrol called #3
 				GuiControl % aParams[1], % aParams[2]._hwnd, % fn
 				return this
 			}
@@ -600,6 +607,7 @@ Class _CGui {
 			if (debug && _CGui_Global_Debug) {
 				OutputDebug, % "[" A_ThisFunc " : " this._hwnd "] Executing GuiControl " aParams[2]._hwnd
 			}
+			; guicontrol called #4
 			GuiControl, % aParams[1], % aParams[2]._hwnd, % aParams[3]
 			return this
 		}
