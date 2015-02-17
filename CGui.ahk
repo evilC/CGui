@@ -175,7 +175,8 @@ class _CScrollGui extends _CGui {
 		
 		Static SB_HORZ := 0, SB_VERT = 1
 		static SIF_ALL := 0x17
-		; Perform Scroll if needed
+		
+		; Alter scroll bars due to client size
 		lpsi := this._BlankScrollInfo()
 		lpsi.fMask := SIF_ALL
 		
