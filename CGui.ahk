@@ -74,13 +74,13 @@ class _CScrollGui extends _CGui {
 		
 		fn := bind(this.AdjustToParent, this)
 		this.OnMessage(WM_SIZE, fn, 999)
-		;fn := bind(this.AdjustToChild, this)
+		;fn := bind(this._ContentsResized, this)
 		;this.OnMessage(WM_SIZE, fn, 999)
 	}
 	
 	; AKA Window resized - If scrollbar(s) all the way at the end and you size up, child needs to be scrolled in the direction of the size up.
 	AdjustToParent(WParam:= 0, lParam := 0, Msg := 0, hwnd := 0){
-		static debug := 1
+		static debug := 0
 		Static SB_HORZ := 0, SB_VERT = 1
 		static SIF_PAGE := 0x2
 		static WindowRECT := 0
@@ -154,6 +154,65 @@ class _CScrollGui extends _CGui {
 		}
 	}
 	
+	; The contents of a Gui changed size (eg Controls were added to a Gui
+	_ContentsResized(WParam := 0, lParam := 0, msg := 0, hwnd := 0){
+		static debug := 1
+		Static SB_HORZ := 0, SB_VERT = 1
+		static SIF_ALL := 0x17
+		;static WindowRECT, CanvasRECT
+
+		; Determine if this message is for us
+		if (hwnd = 0){
+			hwnd := this._hwnd
+		} else if (this._hwnd != hwnd){
+			; Message not for this window
+			;if (debug) {
+			;	OutputDebug, % "[ " this._FormatHwnd() " ] " this._FormatFuncName(A_ThisFunc) "   - Ignoring message"
+			;}
+			return
+		}
+		
+		WindowRECT := this._GetClientRect()
+		CanvasRECT := this._GetClientSize()
+		; Use _Scroll_Width not _Width, as that that indicates the last size of WindowRECT that this function saw
+		if (this._Scroll_Width == WindowRECT.Right && this._Scroll_Height == WindowRECT.Bottom && this._Client_Width == CanvasRECT.Right && this._Client_Height == CanvasRECT.Bottom){
+			; Client Size did not change
+			if (debug) {
+				OutputDebug, % "[ " this._FormatHwnd() " ] " this._FormatFuncName(A_ThisFunc) "   - Aborting as WindowRECT and CanvasRECT have not changed - " this._SerializeWH(WindowRECT) " / " this._SerializeWH(CanvasRECT)
+			}
+			return
+		}
+		if (debug) {
+			OutputDebug, % "[ " this._FormatHwnd() " ] " this._FormatFuncName(A_ThisFunc) "   - New Window / Client Sizes (w,h): " this._SerializeWH(WindowRECT) " / " this._SerializeWH(CanvasRECT)
+		}
+		
+		; Set object vars
+		this._Client_Width := CanvasRECT.Right
+		this._Client_Height := CanvasRECT.Bottom
+		
+		this._Scroll_Width := WindowRECT.Right
+		this._Scroll_Height := WindowRECT.Bottom
+		
+		this._MaxH := WindowRECT.Right
+		this._MaxV := WindowRECT.Bottom
+		this._LineH := Ceil(this._MaxH / 20)
+		this._LineV := Ceil(this._MaxV / 20)
+		
+		; Perform Scroll if needed
+		lpsi := this._BlankScrollInfo()
+		lpsi.fMask := SIF_ALL
+		
+		lpsi.nMin := 0
+		lpsi.nMax := CanvasRECT.Bottom
+		lpsi.nPage := WindowRECT.Bottom
+		this._SetScrollInfo(SB_VERT, lpsi)
+		
+		lpsi.nMax := CanvasRECT.Right
+		lpsi.nPage := WindowRECT.Right
+		this._SetScrollInfo(SB_HORZ, lpsi)
+	}
+
+	/*
 	; Normal resize routine - Just adjust the scrollbars.
 	AdjustToChild(WParam := 0, lParam := 0, msg := 0, hwnd := 0){
 		static debug := 1
@@ -212,6 +271,7 @@ class _CScrollGui extends _CGui {
 		lpsi.nPage := WindowRECT.Right
 		this._SetScrollInfo(SB_HORZ, lpsi)
 	}
+	*/
 	
 	_GetScrollInfo(fnBar, ByRef lpsi, hwnd := 0){
 		static SIF_ALL := 0x17
@@ -508,7 +568,7 @@ Class _CGui {
 	}
 	
 	Gui(aParams*){
-		static debug := 1
+		static debug := 0
 		if (debug){
 			OutputDebug, % "[ " this._FormatHwnd() " ] " this._FormatFuncName(A_ThisFunc) "   - START: " aParams[1] ", " aParams[2] ", " aParams[3] ", " aParams[4]
 		}
@@ -550,7 +610,7 @@ Class _CGui {
 				OutputDebug, % " "
 			}
 			; We added something to this Gui, Child size changed.
-			this.AdjustToChild()
+			this._ContentsResized()
 			return r
 		} else if (aParams[1] = "show") {
 			aParams[2] := this._SerializeOptions()
@@ -572,14 +632,14 @@ Class _CGui {
 	}
 	
 	; Gui's child size changed.
-	AdjustToChild(){
+	_ContentsResized(){
 		
 	}
 	
 	; The same as Gui, +Option - but lets you pass objects instead of hwnds
 	; ToDo: Remove. Replace with this.Gui(option, value)
 	GuiOption(option, value){
-		debug := 1
+		debug := 0
 		if (debug) {
 			OutputDebug, % "[ " this._FormatHwnd() " ] " this._FormatFuncName(A_ThisFunc) "   - GUIOPTION: " option " = " value
 		}
@@ -589,7 +649,7 @@ Class _CGui {
 	
 	; Wraps GuiControl to use hwnds and function binding etc
 	GuiControl(aParams*){
-		static debug := 1
+		static debug := 0
 		m := SubStr(aParams[1],1,1)
 		if (m = "+" || m = "-"){
 			; Options
@@ -673,11 +733,15 @@ Class _CGui {
 						if (cmd = "show") {
 							; Gui, Show, ...  - available size is that of parent (or desktop)
 							max := this._parent[xywh_lookup[opt]]
-							OutputDebug, % "[ " this._FormatHwnd() " ] " this._FormatFuncName(A_ThisFunc) "   - OPTIONS/OPTION (" options "/" opt ") reports Parent (" this._parent._hwnd ") Width: " max
+							if (debug){
+								OutputDebug, % "[ " this._FormatHwnd() " ] " this._FormatFuncName(A_ThisFunc) "   - OPTIONS/OPTION (" options "/" opt ") reports Parent (" this._parent._hwnd ") Width: " max
+							}
 						} else {
 							; Gui, Add, ... - available size is that of this
 							max := this[xywh_lookup[opt]]
-							OutputDebug, % "[ " this._FormatHwnd() " ] " this._FormatFuncName(A_ThisFunc) "   - OPTIONS/OPTION (" options "/" opt ") reports Width: " max
+							if (debug){
+								OutputDebug, % "[ " this._FormatHwnd() " ] " this._FormatFuncName(A_ThisFunc) "   - OPTIONS/OPTION (" options "/" opt ") reports Width: " max
+							}
 						}
 					}
 					
