@@ -174,21 +174,22 @@ class _CScrollGui extends _CGui {
 		; obj vars used
 		; this._Client_Width / this._Client_Height (GET), Used by _GuiRangeChanged (GET/SET), which is the parent to this call
 		
+		; Cannot remove this._Scroll_Width / Height from this func until we make sure nPage is set for the scrollbar
 		Static SB_HORZ := 0, SB_VERT = 1
 		static SIF_ALL := 0x17
 		static SIF_RANGE := 0x1
 		
 		; Alter scroll bars due to client size
 		lpsi := this._BlankScrollInfo()
-		;lpsi.fMask := SIF_ALL
-		lpsi.fMask := SIF_RANGE
+		lpsi.fMask := SIF_ALL
+		;lpsi.fMask := SIF_RANGE
 		lpsi.nMin := 0
 		lpsi.nMax := this._Client_Height
-		;lpsi.nPage := this._Scroll_Height
+		lpsi.nPage := this._Scroll_Height
 		this._SetScrollInfo(SB_VERT, lpsi)
 		
 		lpsi.nMax := this._Client_Width
-		;lpsi.nPage := this._Scroll_Width
+		lpsi.nPage := this._Scroll_Width
 		this._SetScrollInfo(SB_HORZ, lpsi)
 		
 		if (debug) {
