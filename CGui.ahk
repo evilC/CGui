@@ -168,6 +168,10 @@ class _CScrollGui extends _CGui {
 	_ScrollBarClientSized(){
 		static debug := 1
 		
+		; obj vars used
+		; this._Client_Width / this._Client_Height (GET), Used by _ContentsResized (GET/SET), 
+		; this._Scroll_Width / this._Scroll_Height (GET), Used by _ScrollBarGuiSized (GET/SET), _ContentsResized(GET/SET)
+		
 		Static SB_HORZ := 0, SB_VERT = 1
 		static SIF_ALL := 0x17
 		; Perform Scroll if needed
