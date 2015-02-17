@@ -173,13 +173,15 @@ class _CScrollGui extends _CGui {
 		; this._Client_Width / this._Client_Height (GET), Used by _ContentsResized (GET/SET), 
 		; this._Scroll_Width / this._Scroll_Height (GET), Used by _ScrollBarGuiSized (GET/SET), _ContentsResized(GET/SET)
 		
+		; this._Scroll_Width / this._Scroll_Height should not be needed in here?
+		
 		Static SB_HORZ := 0, SB_VERT = 1
 		static SIF_ALL := 0x17
 		
 		; Alter scroll bars due to client size
 		lpsi := this._BlankScrollInfo()
 		lpsi.fMask := SIF_ALL
-		
+		; Adjust scrollbar MAX only ?
 		lpsi.nMin := 0
 		lpsi.nMax := this._Client_Height
 		lpsi.nPage := this._Scroll_Height
@@ -218,7 +220,7 @@ class _CScrollGui extends _CGui {
 				If (this._width <> This._Scroll_Width) {
 					; Window width doesn't match client area width
 					
-					; Update scroll bar
+					; Update Horizontal scroll bar SIZE
 					lpsi := this._BlankScrollInfo()
 					lpsi.fMask := SIF_PAGE
 					lpsi.nPage := this._width + 1
@@ -242,7 +244,7 @@ class _CScrollGui extends _CGui {
 				If (this._height <> This._Scroll_Height) {
 					; Window Height doesn't match client height
 					
-					; Update scroll bar
+					; Update Vertical scroll bar SIZE
 					lpsi := this._BlankScrollInfo()
 					lpsi.fMask := SIF_PAGE
 					lpsi.nPage := this._height + 1
@@ -262,6 +264,7 @@ class _CScrollGui extends _CGui {
 				}
 			}
 			if (DragV || DragH){
+				; Perform the drag if required
 				this._ScrollWindow(DragH, DragV)
 			}
 		}
