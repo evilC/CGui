@@ -85,7 +85,9 @@ class _CScrollGui extends _CGui {
 			this._width := WindowRECT.Right
 			this._height := WindowRECT.Bottom
 		} else {
-			; Window has not changed size, no need to recalculate scroll bars due to size change
+			if (debug) {
+				OutputDebug, % "[" A_ThisFunc " : " this._hwnd "] Aborting as WindowRECT has not changed - " this._SerializeWH(WindowRECT)
+			}
 			return
 		}
 
@@ -173,7 +175,7 @@ class _CScrollGui extends _CGui {
 		if (this._Scroll_Width == WindowRECT.Right && this._Scroll_Height == WindowRECT.Bottom && this._Client_Width == CanvasRECT.Right && this._Client_Height == CanvasRECT.Bottom){
 			; Client Size did not change
 			if (debug) {
-				OutputDebug, % "[" A_ThisFunc " : " this._hwnd "] Aborting as WindowRECT and CanvasRECT have not changed - " WindowRECT.Right
+				OutputDebug, % "[" A_ThisFunc " : " this._hwnd "] Aborting as WindowRECT and CanvasRECT have not changed - " this._SerializeWH(WindowRECT) " / " this._SerializeWH(CanvasRECT)
 			}
 			return
 		}
