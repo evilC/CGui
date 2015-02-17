@@ -83,8 +83,19 @@ class _CScrollGui extends _CGui {
 		static debug := 1
 		Static SB_HORZ := 0, SB_VERT = 1
 		static SIF_PAGE := 0x2
-		static WindowRECT := 0
+		;static WindowRECT := 0
 		
+		; Ignore message if it is not for this window
+		if (hwnd = 0){
+			hwnd := this._hwnd
+		} else if (this._hwnd != hwnd){
+			; message not for this window
+			if (debug){
+				OutputDebug, % "[ " this._FormatHwnd() " ] " this._FormatFuncName(A_ThisFunc) "   - Ignoring message "
+			}
+			return
+		}
+
 		WindowRECT := this._GetClientRect()
 		if (WindowRECT.Right != this._width || WindowRECT.Bottom != this._height){
 			; Window changed since we were last in here, or this is first time in here.
@@ -101,21 +112,6 @@ class _CScrollGui extends _CGui {
 			OutputDebug, % "[ " this._FormatHwnd() " ] " this._FormatFuncName(A_ThisFunc) "   - Window changed size to (w,h): " this._SerializeWH(WindowRECT)
 		}
 
-		if (hwnd = 0){
-			hwnd := this._hwnd
-			if (debug){
-				OutputDebug, % "[ " this._FormatHwnd() " ] " this._FormatFuncName(A_ThisFunc) "   - Called without params - hwnd: " this.FormatHex(hwnd)
-			}
-		} else if (this._hwnd != hwnd){
-			; message not for this window
-			return
-		} else {
-			if (debug) {
-				OutputDebug, % "[ " this._FormatHwnd() " ] " this._FormatFuncName(A_ThisFunc) "   - Called with params - hwnd: " this.FormatHex(hwnd)
-			}
-		}
-		
-		CanvasRECT := this._GetClientSize()
 		Width := WindowRECT.Right
 		Height := WindowRECT.Bottom
 		If (A_EventInfo <> 1) {
