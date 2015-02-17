@@ -99,20 +99,20 @@ class _CScrollGui extends _CGui {
 			return
 		}
 
-		WindowRECT := this._GetClientRect()
-		if (WindowRECT.Right != this._width || WindowRECT.Bottom != this._height){
+		PageRECT := this._GetClientRect()
+		if (PageRECT.Right != this._width || PageRECT.Bottom != this._height){
 			; Window changed since we were last in here, or this is first time in here.
-			this._width := WindowRECT.Right
-			this._height := WindowRECT.Bottom
+			this._width := PageRECT.Right
+			this._height := PageRECT.Bottom
 		} else {
 			if (debug) {
-				OutputDebug, % "[ " this._FormatHwnd() " ] " this._FormatFuncName(A_ThisFunc) "   - Aborting as WindowRECT has not changed - " this._SerializeWH(WindowRECT)
+				OutputDebug, % "[ " this._FormatHwnd() " ] " this._FormatFuncName(A_ThisFunc) "   - Aborting as PageRECT has not changed - " this._SerializeWH(PageRECT)
 			}
 			return
 		}
 
 		if (debug) {
-			OutputDebug, % "[ " this._FormatHwnd() " ] " this._FormatFuncName(A_ThisFunc) "   - Window changed size to (w,h): " this._SerializeWH(WindowRECT)
+			OutputDebug, % "[ " this._FormatHwnd() " ] " this._FormatFuncName(A_ThisFunc) "   - Window changed size to (w,h): " this._SerializeWH(PageRECT)
 		}
 
 		this._SetSScrollbarPage()
@@ -138,35 +138,35 @@ class _CScrollGui extends _CGui {
 			return
 		}
 		
-		WindowRECT := this._GetClientRect()	; remove? _GuiPageChanged should set _width and _height.
-		CanvasRECT := this._GetClientSize()
-		; Use _GuiPageWidth not _Width, as that that indicates the last size of WindowRECT that this function saw
-		if (this._GuiPageWidth == WindowRECT.Right && this._GuiPageHeight == WindowRECT.Bottom && this._GuiRangeWidth == CanvasRECT.Right && this._GuiRangeHeight == CanvasRECT.Bottom){
+		PageRECT := this._GetClientRect()	; remove? _GuiPageChanged should set _width and _height.
+		RangeRECT := this._GetClientSize()
+		; Use _GuiPageWidth not _Width, as that that indicates the last size of PageRECT that this function saw
+		if (this._GuiPageWidth == PageRECT.Right && this._GuiPageHeight == PageRECT.Bottom && this._GuiRangeWidth == RangeRECT.Right && this._GuiRangeHeight == RangeRECT.Bottom){
 			; Client Size did not change
 			if (debug) {
-				OutputDebug, % "[ " this._FormatHwnd() " ] " this._FormatFuncName(A_ThisFunc) "   - Aborting as WindowRECT and CanvasRECT have not changed - " this._SerializeWH(WindowRECT) " / " this._SerializeWH(CanvasRECT)
+				OutputDebug, % "[ " this._FormatHwnd() " ] " this._FormatFuncName(A_ThisFunc) "   - Aborting as PageRECT and RangeRECT have not changed - " this._SerializeWH(PageRECT) " / " this._SerializeWH(RangeRECT)
 			}
 			return
 		}
 		if (debug) {
-			OutputDebug, % "[ " this._FormatHwnd() " ] " this._FormatFuncName(A_ThisFunc) "   - New Window / Client Sizes (w,h): " this._SerializeWH(WindowRECT) " / " this._SerializeWH(CanvasRECT)
+			OutputDebug, % "[ " this._FormatHwnd() " ] " this._FormatFuncName(A_ThisFunc) "   - New Window / Client Sizes (w,h): " this._SerializeWH(PageRECT) " / " this._SerializeWH(RangeRECT)
 		}
 		
 		; Set object vars
-		this._GuiRangeWidth := CanvasRECT.Right
-		this._GuiRangeHeight := CanvasRECT.Bottom
+		this._GuiRangeWidth := RangeRECT.Right
+		this._GuiRangeHeight := RangeRECT.Bottom
 		
-		this._GuiPageWidth := WindowRECT.Right
-		this._GuiPageHeight := WindowRECT.Bottom
+		this._GuiPageWidth := PageRECT.Right
+		this._GuiPageHeight := PageRECT.Bottom
 		
-		this._LineH := Ceil(WindowRECT.Right / 20)
-		this._LineV := Ceil(WindowRECT.Bottom / 20)
+		this._LineH := Ceil(PageRECT.Right / 20)
+		this._LineV := Ceil(PageRECT.Bottom / 20)
 		this._SetScrollbarRange()
 	}
 	
 	; Range / Page merge notes
-	; this._GuiRangeWidth / Height is a CanvasRECT = RANGE
-	; this._GuiPageWidth / Height is a WindowRECT = PAGE
+	; this._GuiRangeWidth / Height is a RangeRECT = RANGE
+	; this._GuiPageWidth / Height is a PageRECT = PAGE
 
 	; merge _GuiRangeHeight / _GuiRangeWidth and _GuiPageHeight / _GuiPageWidth on to one Scrollinfo object
 	
