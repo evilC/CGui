@@ -27,7 +27,7 @@ Class MyClass extends CWindow {
 		this.GUI_COLUMN_2 := 300
 		this.Gui("Margin",5,5)
 
-		this.Gui("Show", "w500 h150","Scroll Demo")
+		this.Gui("Show", "w500 h250","Scroll Demo")
 		
 		;this.Gui("Add", "Text", "Center xm ym w" this.GUI_MAX_WIDTH, "HWND: " this._hwnd)
 		this.Gui("Add", "Text", "Center xm ym w100% ", "HWND: " this._hwnd)

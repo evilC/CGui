@@ -73,27 +73,40 @@ class _CScrollGui extends _CGui {
 		this.OnMessage(WM_SIZE, fn, 999)
 	}
 	
-	; AKA Window resized.
+	; AKA Window resized - If scrollbar(s) all the way at the end and you size up, child needs to be scrolled in the direction of the size up.
 	AdjustToParent(WParam:= 0, lParam := 0, Msg := 0, hwnd := 0){
-		static debug := 0
+		static debug := 1
 		Static SB_HORZ := 0, SB_VERT = 1
 		static SIF_PAGE := 0x2
+		static WindowRECT := 0
 		
+		WindowRECT := this._GetClientRect()
+		if (WindowRECT.Right != this._width && WindowRECT.Bottom != this._height){
+			this._width := WindowRECT.Right
+			this._height := WindowRECT.Bottom
+		} else {
+			; Window has not changed size, no need to recalculate scroll bars due to size change
+			return
+		}
+
+		if (debug) {
+			OutputDebug, % "[" A_ThisFunc " : " this._hwnd "] Window changed size to (w,h): " this._SerializeWH(WindowRECT)
+		}
+
 		if (hwnd = 0){
 			hwnd := this._hwnd
 			if (debug){
-				OutputDebug, % "[" A_ThisFunc "] Called without params - hwnd: " this.FormatHex(hwnd)
+				OutputDebug, % "[" A_ThisFunc " : " this._hwnd "] Called without params - hwnd: " this.FormatHex(hwnd)
 			}
 		} else if (this._hwnd != hwnd){
 			; message not for this window
 			return
 		} else {
 			if (debug) {
-				OutputDebug, % "[" A_ThisFunc "] Called with params - hwnd: " this.FormatHex(hwnd)
+				OutputDebug, % "[" A_ThisFunc " : " this._hwnd "]Called with params - hwnd: " this.FormatHex(hwnd)
 			}
 		}
 		
-		WindowRECT := this._GetClientRect()
 		CanvasRECT := this._GetClientSize()
 		Width := WindowRECT.Right
 		Height := WindowRECT.Bottom
@@ -133,34 +146,47 @@ class _CScrollGui extends _CGui {
 		}
 	}
 	
-	; AKA Child contents changed size
+	; Normal resize routine - Just adjust the scrollbars.
 	AdjustToChild(WParam := 0, lParam := 0, msg := 0, hwnd := 0){
-		static debug := 0
+		static debug := 1
 		Static SB_HORZ := 0, SB_VERT = 1
 		static SIF_ALL := 0x17
-		
+		;static WindowRECT, CanvasRECT
+
 		if (hwnd = 0){
 			hwnd := this._hwnd
 			if (debug) {
-				OutputDebug, % "[" A_ThisFunc "] Called without params - hwnd: " this.FormatHex(hwnd)
+				OutputDebug % "[" A_ThisFunc " : " this._hwnd "] Called without params"
 			}
 		} else if (this._hwnd != hwnd){
-			;MsgBox % "hwnd " this._hwnd " Rejecting HWND " Format("{:x}",hwnd)
+			; Message not for this window
 			return
 		} else {
 			if (debug) {
-				OutputDebug, % "[" A_ThisFunc "] Called with params - hwnd: " this.FormatHex(hwnd)
+				OutputDebug, % "[" A_ThisFunc " : " this._hwnd "] Called with params"
 			}
 		}
 		
 		WindowRECT := this._GetClientRect()
-		this._width := WindowRECT.Right
-		this._height := WindowRECT.Bottom
 		CanvasRECT := this._GetClientSize()
-		if (!this._Scroll_Width || !this._Scroll_Height){
+		; Use _Scroll_Width not _Width, as that that indicates the last size of WindowRECT that this function saw
+		if (this._Scroll_Width == WindowRECT.Right && this._Scroll_Height == WindowRECT.Bottom && this._Client_Width == CanvasRECT.Right && this._Client_Height == CanvasRECT.Bottom){
+			; Client Size did not change
+			if (debug) {
+				OutputDebug, % "[" A_ThisFunc " : " this._hwnd "] Aborting as WindowRECT and CanvasRECT have not changed - " WindowRECT.Right
+			}
+			return
+		}
+		this._Client_Width := CanvasRECT.Right
+		this._Client_Height := CanvasRECT.Bottom
+		
+		;if (!this._Scroll_Width || !this._Scroll_Height){
 			Width := WindowRECT.Right
 			Height := WindowRECT.Bottom
-		}
+		;}
+		this._Scroll_Width := Width
+		this._Scroll_Height := Height
+		
 		this._MaxH := WindowRECT.Right
 		this._MaxV := WindowRECT.Bottom
 		this._LineH := Ceil(this._MaxH / 20)
@@ -177,9 +203,6 @@ class _CScrollGui extends _CGui {
 		lpsi.nMax := CanvasRECT.Right
 		lpsi.nPage := WindowRECT.Right
 		this._SetScrollInfo(SB_HORZ, lpsi)
-		
-		this._Scroll_Width := Width
-		this._Scroll_Height := Height
 	}
 	
 	_GetScrollInfo(fnBar, ByRef lpsi, hwnd := 0){
@@ -473,7 +496,7 @@ Class _CGui {
 	Gui(aParams*){
 		static debug := 0
 		if (debug){
-			OutputDebug, % "[" A_ThisFunc "] PROCESSING COMMAND: " aParams[1] ", " aParams[2] ", " aParams[3] ", " aParams[4]
+			OutputDebug, % "[" A_ThisFunc " : " this._hwnd "] PROCESSING COMMAND: " aParams[1] ", " aParams[2] ", " aParams[3] ", " aParams[4]
 		}
 		; Store Guis option object
 		if (aParams[1] = "add"){
@@ -489,8 +512,8 @@ Class _CGui {
 			return
 		}
 		if (aParams[1] = "new"){
-			aParams[1] := this.SerializeOptions()
-			;OutputDebug, % "[" A_ThisFunc "] Executing Gui Cmd (New): " aParams[1] ", " aParams[2] ", " aParams[3] ", " aParams[4]
+			aParams[1] := this._SerializeOptions()
+			;OutputDebug, % "[" A_ThisFunc " : " this._hwnd "] Executing Gui Cmd (New): " aParams[1] ", " aParams[2] ", " aParams[3] ", " aParams[4]
 			Gui, new, % "hwndhwnd " aParams[1], % aParams[3], % aParams[4]
 			this._hwnd := hwnd
 			_CGui._HwndLookup[hwnd] := this
@@ -500,23 +523,23 @@ Class _CGui {
 				MsgBox % "v-labels and g-labels are not allowed.`n`Please consult the documentation for alternate methods to use."
 				return
 			}
-			aParams[3] := this.SerializeOptions()
+			aParams[3] := this._SerializeOptions()
 			if (debug) {
-				OutputDebug, % "[" A_ThisFunc "] GUI COMMAND ENDS: " aParams[1] ", " aParams[2] ", " aParams[3] ", " aParams[4]
+				OutputDebug, % "[" A_ThisFunc " : " this._hwnd "] GUI COMMAND ENDS: " aParams[1] ", " aParams[2] ", " aParams[3] ", " aParams[4]
 				OutputDebug, % " "
 			}
 			return new this.CGuiControl(this, aParams[2], aParams[3], aParams[4])
 		} else if (aParams[1] = "show") {
-			aParams[2] := this.SerializeOptions()
-			;OutputDebug, % "[" A_ThisFunc "] Executing Gui Cmd (Default): " aParams[1] ", " aParams[2] ", " aParams[3] ", " aParams[4]
+			aParams[2] := this._SerializeOptions()
+			;OutputDebug, % "[" A_ThisFunc " : " this._hwnd "] Executing Gui Cmd (Default): " aParams[1] ", " aParams[2] ", " aParams[3] ", " aParams[4]
 			Gui, % this._hwnd ":" aParams[1], % aParams[2], % aParams[3], % aParams[4]
 		} else {
-			aParams[2] := this.SerializeOptions()
-			;OutputDebug, % "[" A_ThisFunc "] Executing Gui Cmd (Default): " aParams[1] ", " aParams[2] ", " aParams[3] ", " aParams[4]
+			aParams[2] := this._SerializeOptions()
+			;OutputDebug, % "[" A_ThisFunc " : " this._hwnd "] Executing Gui Cmd (Default): " aParams[1] ", " aParams[2] ", " aParams[3] ", " aParams[4]
 			Gui, % this._hwnd ":" aParams[1], % aParams[2], % aParams[3], % aParams[4]
 		}
 		if (debug){
-			OutputDebug, % "[" A_ThisFunc "] GUI COMMAND ENDS"
+			OutputDebug, % "[" A_ThisFunc " : " this._hwnd "] GUI COMMAND ENDS"
 			OutputDebug, % " "
 		}
 	}
@@ -567,14 +590,14 @@ Class _CGui {
 		static xywh_lookup := {x: "_Width", y: "_Height", w: "_Width", h: "_Height"}
 		static wh_types := {w: 1, h: 1}
 		if (debug) {
-			OutputDebug, % "[" A_ThisFunc "] Processing options: " options
+			OutputDebug, % "[" A_ThisFunc " : " this._hwnd "] Processing options: " options
 		}
 		ret := { flags: {}, options: {}, signs: {} }
 		opts := StrSplit(options, A_Space)
 		Loop % opts.MaxIndex() {
 			opt := opts[A_Index]
 			if (debug) {
-				OutputDebug, % "[" A_ThisFunc "] Processing option: " opt
+				OutputDebug, % "[" A_ThisFunc " : " this._hwnd "] Processing option: " opt
 			}
 			; Strip +/- prefix if it exists
 			sign := SubStr(opt,1,1)
@@ -606,11 +629,11 @@ Class _CGui {
 						if (cmd = "show") {
 							; Gui, Show, ...  - available size is that of parent (or desktop)
 							max := this._parent[xywh_lookup[opt]]
-							;OutputDebug, % "[" A_ThisFunc "] HWND " this._hwnd " OPTIONS/OPTION (" options "/" opt ") reports Parent (" this._parent._hwnd ") Width: " max
+							;OutputDebug, % "[" A_ThisFunc " : " this._hwnd "] HWND " this._hwnd " OPTIONS/OPTION (" options "/" opt ") reports Parent (" this._parent._hwnd ") Width: " max
 						} else {
 							; Gui, Add, ... - available size is that of this
 							max := this[xywh_lookup[opt]]
-							;OutputDebug, % "[" A_ThisFunc "] HWND " this._hwnd " OPTIONS/OPTION (" options "/" opt ") reports Width: " max
+							;OutputDebug, % "[" A_ThisFunc " : " this._hwnd "] HWND " this._hwnd " OPTIONS/OPTION (" options "/" opt ") reports Width: " max
 						}
 					}
 					
@@ -630,7 +653,7 @@ Class _CGui {
 	}
 	
 	; Turns an options object into an option string
-	SerializeOptions(opts := 0){
+	_SerializeOptions(opts := 0){
 		static debug := 0
 		if (opts = 0){
 			opts := this._GuiOptions
@@ -646,11 +669,16 @@ Class _CGui {
 			Count++
 		}
 		if (debug){
-			OutputDebug, % "[" A_ThisFunc "] Returning: " options
+			OutputDebug, % "[" A_ThisFunc " : " this._hwnd "] Returning: " options
 			;OutputDebug, % " "
 		}
 
 		return options
+	}
+	
+	; RECT to CSV, mainly for debugging
+	_SerializeWH(RECT){
+		return RECT.Right "," RECT.Bottom
 	}
 	
 	FormatHex(val){
