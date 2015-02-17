@@ -166,6 +166,8 @@ class _CScrollGui extends _CGui {
 	
 	; Adjust scrollbars due to change in client height.
 	; Try and merge / share code with _SetSScrollbarPage
+	; RANGE = the TOTAL area this Window contains (ie the size of the RECT encompassing all it's child objects)
+	; If the RANGE is bigger than the PAGE, scrollbars need to be shown
 	_SetScrollbarRange(){
 		static debug := 1
 		
@@ -199,6 +201,7 @@ class _CScrollGui extends _CGui {
 
 	; Update scrollbars due to window resize and drag if needed
 	; Try and merge / share code with _SetScrollbarRange
+	; PAGE = The "Window" through which you can see a portion of the RANGE.
 	_SetSScrollbarPage(){
 		static debug := 1
 		Static SB_HORZ := 0, SB_VERT = 1
