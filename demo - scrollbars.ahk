@@ -29,7 +29,6 @@ Class MyClass extends CWindow {
 			this.ChildWindow1.Gui("Add", "Text", "Center xm w" this.GUI_WIDTH, "Text " A_Index)
 		}
 		this.ChildWindow1.Gui("Show", "x100 y100 w" this.GUI_WIDTH " h200")
-		this.ChildWindow1.AdjustToChild()
 		
 		this.Gui("Show", "y0 w400 h400","Scroll Demo")
 	}

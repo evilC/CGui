@@ -38,7 +38,6 @@ Class MyClass extends CWindow {
 			;this.ChildWindow1.Gui("Add", "Text", "Center xm w50%", "Text " A_Index)
 			this.ChildWindow1.Gui("Add", "Text", "Center xm", "Text " A_Index)
 		}
-		;this.ChildWindow1.AdjustToChild()
 
 		this.ChildWindow2 := new CWindow(this, "-Border").GuiOption("+Parent", this)
 		this.ChildWindow2.Gui("Show", "x55% y50 w45% h200")
@@ -47,9 +46,6 @@ Class MyClass extends CWindow {
 		Loop 30 {
 			this.ChildWindow2.Gui("Add", "Text", "Center x0 w100%", "Text " A_Index)
 		}
-		;this.ChildWindow2.AdjustToChild()
-		
-		;this.AdjustToChild()
 	}
 	
 	SendMyString(){

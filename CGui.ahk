@@ -68,8 +68,6 @@ class _CScrollGui extends _CGui {
 		this._Scroll_V := 1
 		this._Scroll_UseShift := False
 
-		;this.AdjustToChild()
-		
 		fn := bind(this._ScrollHandler, this)
 		this.OnMessage(WM_VSCROLL, fn)
 		this.OnMessage(WM_HSCROLL, fn)
@@ -534,6 +532,7 @@ Class _CGui {
 			}
 			Gui, new, % "hwndhwnd " aParams[1], % aParams[3], % aParams[4]
 			this._hwnd := hwnd
+			; Call AdjustToParent() here?
 			_CGui._HwndLookup[hwnd] := this
 		} else if (aParams[1] = "add") {
 			if (this._GuiOptions.flags.v || this._GuiOptions.flags.g){
@@ -549,7 +548,9 @@ Class _CGui {
 			if (debug) {
 				OutputDebug, % "[ " this._FormatHwnd() " ] "  this._FormatFuncName(A_ThisFunc) "   - ADD: " aParams[2] " - RESULT: Control Hwnd " r._hwnd
 				OutputDebug, % " "
-			}			
+			}
+			; We added something to this Gui, Child size changed.
+			this.AdjustToChild()
 			return r
 		} else if (aParams[1] = "show") {
 			aParams[2] := this._SerializeOptions()
@@ -570,6 +571,10 @@ Class _CGui {
 		}
 	}
 	
+	; Gui's child size changed.
+	AdjustToChild(){
+		
+	}
 	
 	; The same as Gui, +Option - but lets you pass objects instead of hwnds
 	; ToDo: Remove. Replace with this.Gui(option, value)
