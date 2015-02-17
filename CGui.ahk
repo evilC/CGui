@@ -78,6 +78,7 @@ class _CScrollGui extends _CGui {
 		;this.OnMessage(WM_SIZE, fn, 999)
 	}
 	
+	; VARIABLE USAGE SEEMS SENSIBLE
 	; This window resized - If scrollbar(s) all the way at the end and you size up, child needs to be scrolled in the direction of the size up.
 	_GuiResized(WParam:= 0, lParam := 0, Msg := 0, hwnd := 0){
 		static debug := 0
@@ -85,7 +86,7 @@ class _CScrollGui extends _CGui {
 		static SIF_PAGE := 0x2
 		
 		; obj vars used:
-		; this._width, this._height: GET / SET, Used By: _ScrollBarGuiSized(GET)
+		; this._width, this._height: GET / SET, Used By: _ScrollBarGuiSized(GET)  - SEEMS LEGIT
 		
 		; Ignore message if it is not for this window
 		if (hwnd = 0){
@@ -192,6 +193,9 @@ class _CScrollGui extends _CGui {
 		}
 	}
 
+	; this._Client_Width / Height is a CanvasRECT
+	; this._Scroll_Width / Height is a WindowRECT - same as _width?
+
 	; Update scrollbars due to window resize and drag if needed
 	; Try and merge / share code with _ScrollBarClientSized
 	_ScrollBarGuiSized(){
@@ -199,7 +203,8 @@ class _CScrollGui extends _CGui {
 		Static SB_HORZ := 0, SB_VERT = 1
 		static SIF_PAGE := 0x2
 		; obj vars used:
-		; this._width, this._height - GET, Used by: _GuiResized(GET/SET), 
+		; this._width, this._height - GET, Used by: _GuiResized(GET/SET) - SEEMS LEGIT
+		
 		; This._Scroll_Width . This._Scroll_Height (GET / SET), used by _ContentsResized (GET/SET)
 		; This._Scroll_PosH / This._Scroll_PosV (GET/SET), used by _Scroll (_SET)
 
