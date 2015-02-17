@@ -22,7 +22,7 @@ GuiClose:
 Class MyClass extends CWindow {
 	__New(){
 		base.__New(0, "+Resize")
-		this.Gui("Margin",5,5).Gui("Show", "w500 h250","Scroll Demo")
+		this.Gui("Margin",5,5).Gui("Show", "w500 h500","Scroll Demo")
 
 		this.Gui("Add", "Text", "Center xm ym w100% ", "HWND: " this._hwnd)
 

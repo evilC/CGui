@@ -62,35 +62,38 @@ class _CScrollGui extends _CGui {
 		this._Scroll_V := 1
 		this._Scroll_UseShift := False
 
-		this._parent.AdjustToChild()
-		
 		fn := bind(this._ScrollHandler, this)
 		this.OnMessage(WM_VSCROLL, fn)
 		this.OnMessage(WM_HSCROLL, fn)
 		
-		fn := bind(this.AdjustToParent, this)
+		fn := bind(this._WindowSizeChanged, this)
 		this.OnMessage(WM_SIZE, fn, 999)
 		return this
 	}
 	
+	
 	Gui(aParams*){
 		; Whenever a gui command runs, adjust the scrollbars
 		base.Gui(aParams*)
-		this.AdjustToChild()
+		;this.AdjustToChild()
+		if (aParams[1] = "add"){
+			this._ChildSizeChanged()
+		}
 		return this
 	}
-	
-	; AKA Window resized - If scrollbar(s) all the way at the end and you size up, child needs to be scrolled in the direction of the size up.
-	AdjustToParent(WParam:= 0, lParam := 0, Msg := 0, hwnd := 0){
+
+	; Called when the size of a window changes.
+	; Also performs a scroll if a scrollbar is at it's end and we are sizing up - in this case it "drags" the child window with it as it sizes up
+	_WindowSizeChanged(WParam:= 0, lParam := 0, Msg := 0, hwnd := 0){
 		static debug := 1
 		Static SB_HORZ := 0, SB_VERT = 1
 		static SIF_PAGE := 0x2
-		static WindowRECT := 0
+		;static WindowRECT := 0
 		
 		WindowRECT := this._GetClientRect()
-		if (WindowRECT.Right != this._width && WindowRECT.Bottom != this._height){
+		if (WindowRECT.Right != this._width || WindowRECT.Bottom != this._height){
 			if (debug) {
-				OutputDebug, % "[" A_ThisFunc " : " this._hwnd "] Window changed size to (w,h): " this._width "," this._width " -> " this._SerializeWH(WindowRECT)
+				OutputDebug, % "[" A_ThisFunc " : " this._hwnd "] Adjusting Scrollbars Due to window size change from (w,h) -> (w,h): " this._width "," this._width " -> " this._SerializeWH(WindowRECT)
 			}
 			this._width := WindowRECT.Right
 			this._height := WindowRECT.Bottom
@@ -101,47 +104,55 @@ class _CScrollGui extends _CGui {
 			return
 		}
 
-		CanvasRECT := this._GetClientSize()
-		Width := WindowRECT.Right
-		Height := WindowRECT.Bottom
+		; Alter the scroll bars as we resize
 		If (A_EventInfo <> 1) {
-			SH := SV := 0
+			; Sent via PostMessage
+			DragHoriz := DragVert := 0
 			If This._Scroll_H {
-				If (Width <> This._Scroll_Width) {
+				; Horizontal Scrollbars are enabled
+				If (WindowRECT.Right <> This._Scroll_Width) {
 					lpsi := this._BlankScrollInfo()
 					lpsi.fMask := SIF_PAGE
-					lpsi.nPage := Width + 1
+					;lpsi.nPage := WindowRECT.Right + 1
+					lpsi.nPage := WindowRECT.Right
 					This._SetScrollInfo(SB_HORZ, lpsi)
 
-					This._Scroll_Width := Width
+					This._Scroll_Width := WindowRECT.Right
 					This._GetScrollInfo(SB_HORZ, SI)
-					PosH := SI.nPos
-					SH := This._Scroll_PosH - PosH
-					This._Scroll_PosH := PosH
+					DragHoriz := This._Scroll_PosH - SI.nPos
+					This._Scroll_PosH := SI.nPos
 				}
 			}
 			If This._Scroll_V {
-				If (Height <> This._Scroll_Height) {
+				; Vertical Scrollbars are enabled
+				If (WindowRECT.Bottom <> This._Scroll_Height) {
 					lpsi := this._BlankScrollInfo()
 					lpsi.fMask := SIF_PAGE
-					lpsi.nPage := Height + 1
+					;lpsi.nPage := WindowRECT.Bottom + 1
+					lpsi.nPage := WindowRECT.Bottom 
 					This._SetScrollInfo(SB_VERT, lpsi)
 					
-					This._Scroll_Height := Height
+					This._Scroll_Height := WindowRECT.Bottom
 					This._GetScrollInfo(SB_VERT, SI)
-					PosV := SI.nPos
-					SV := This._Scroll_PosV - PosV
-					This._Scroll_PosV := PosV
+					DragVert := This._Scroll_PosV - SI.nPos
+					This._Scroll_PosV := SI.nPos
 				}
 			}
-			if (SV || SH){
-				this._ScrollWindow(SH, SV)
+			if (DragVert || DragHoriz){
+				if (debug) {
+					OutputDebug, % "[" A_ThisFunc " : " this._hwnd "] Dragging Window as we size up (x,y): " DragHoriz "," DragVert
+				}
+				this._ScrollWindow(DragHoriz, DragVert)
+			} else {
+				if (debug) {
+					OutputDebug, % "[" A_ThisFunc " : " this._hwnd "] No Window Dragging Required."
+				}
 			}
 		}
 	}
 	
-	; Normal resize routine - Just adjust the scrollbars.
-	AdjustToChild(WParam := 0, lParam := 0, msg := 0, hwnd := 0){
+	; The Size of the Child Canvas changed ( Something was added to this Gui)
+	_ChildSizeChanged(WParam := 0, lParam := 0, msg := 0, hwnd := 0){
 		static debug := 1
 		Static SB_HORZ := 0, SB_VERT = 1
 		static SIF_ALL := 0x17
