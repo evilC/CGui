@@ -112,40 +112,47 @@ class _CScrollGui extends _CGui {
 			OutputDebug, % "[ " this._FormatHwnd() " ] " this._FormatFuncName(A_ThisFunc) "   - Window changed size to (w,h): " this._SerializeWH(WindowRECT)
 		}
 
-		Width := WindowRECT.Right
-		Height := WindowRECT.Bottom
 		If (A_EventInfo <> 1) {
-			SH := SV := 0
+			; Filter SendMessage / PostMessage? Not sure what point of this conditional is
+			DragH := DragV := 0
 			If This._Scroll_H {
-				If (Width <> This._Scroll_Width) {
+				; Horizontal scroll bars are enabled
+				If (WindowRECT.Right <> This._Scroll_Width) {
+					; Window width doesn't match client area width
+					
+					; Update scroll bar
 					lpsi := this._BlankScrollInfo()
 					lpsi.fMask := SIF_PAGE
-					lpsi.nPage := Width + 1
+					lpsi.nPage := WindowRECT.Right + 1
 					This._SetScrollInfo(SB_HORZ, lpsi)
 
-					This._Scroll_Width := Width
+					; Update Scroll vars
+					This._Scroll_Width := WindowRECT.Right
 					This._GetScrollInfo(SB_HORZ, SI)
-					PosH := SI.nPos
-					SH := This._Scroll_PosH - PosH
-					This._Scroll_PosH := PosH
+					DragH := This._Scroll_PosH - SI.nPos
+					This._Scroll_PosH := SI.nPos
 				}
 			}
 			If This._Scroll_V {
-				If (Height <> This._Scroll_Height) {
+				; Vertical scroll wheels are enabled
+				If (WindowRECT.Bottom <> This._Scroll_Height) {
+					; Window Height doesn't match client height
+					
+					; Update scroll bar
 					lpsi := this._BlankScrollInfo()
 					lpsi.fMask := SIF_PAGE
-					lpsi.nPage := Height + 1
+					lpsi.nPage := WindowRECT.Bottom + 1
 					This._SetScrollInfo(SB_VERT, lpsi)
 					
-					This._Scroll_Height := Height
+					; Update Scroll vars
+					This._Scroll_Height := WindowRECT.Bottom
 					This._GetScrollInfo(SB_VERT, SI)
-					PosV := SI.nPos
-					SV := This._Scroll_PosV - PosV
-					This._Scroll_PosV := PosV
+					DragV := This._Scroll_PosV - SI.nPos
+					This._Scroll_PosV := SI.nPos
 				}
 			}
-			if (SV || SH){
-				this._ScrollWindow(SH, SV)
+			if (DragV || DragH){
+				this._ScrollWindow(DragH, DragV)
 			}
 		}
 	}
