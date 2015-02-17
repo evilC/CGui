@@ -112,7 +112,15 @@ class _CScrollGui extends _CGui {
 			OutputDebug, % "[ " this._FormatHwnd() " ] " this._FormatFuncName(A_ThisFunc) "   - Window changed size to (w,h): " this._SerializeWH(WindowRECT)
 		}
 
-		;this._UpdateAndDrag()
+		this._UpdateAndDrag()
+	}
+
+	; Update scrollbars and drag if needed
+	_UpdateAndDrag(){
+		static debug := 1
+		Static SB_HORZ := 0, SB_VERT = 1
+		static SIF_PAGE := 0x2
+
 		; Update Scroll bars and Drag window on size up if needed.
 		If (A_EventInfo <> 1) {
 			; Filter SendMessage / PostMessage? Not sure what point of this conditional is
@@ -170,7 +178,6 @@ class _CScrollGui extends _CGui {
 			}
 		}
 	}
-
 	/*
 	; AKA Window resized - If scrollbar(s) all the way at the end and you size up, child needs to be scrolled in the direction of the size up.
 	AdjustToParent(WParam:= 0, lParam := 0, Msg := 0, hwnd := 0){
