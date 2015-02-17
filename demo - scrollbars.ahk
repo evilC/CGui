@@ -25,12 +25,14 @@ Class MyClass extends CWindow {
 		this.Gui("Show", "w400 h400","Scroll Demo")
 		this.Gui("Margin",5,5)
 
+		this.Gui("Add", "Text", "Center xm ym w100% ", "HWND: " this._hwnd)
 		this.ChildWindow1 := new CWindow(this, "-Border").GuiOption("+Parent", this)
 		this.ChildWindow1.Gui("Show", "x100 y100 w50% h50%")
+		this.Gui("Add", "Text", "Center x0 y30 w100%", "HWND: " this.ChildWindow1._hwnd)
 		Loop 20 {
 			this.ChildWindow1.Gui("Add", "Text", "Center xm w100%", "Text " A_Index)
 		}
-
+		;this.AdjustToChild()
 	}
 	
 	SendMyString(){

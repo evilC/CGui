@@ -89,6 +89,9 @@ class _CScrollGui extends _CGui {
 		
 		WindowRECT := this._GetClientRect()
 		if (WindowRECT.Right != this._width && WindowRECT.Bottom != this._height){
+			if (debug) {
+				OutputDebug, % "[" A_ThisFunc " : " this._hwnd "] Window changed size to (w,h): " this._width "," this._width " -> " this._SerializeWH(WindowRECT)
+			}
 			this._width := WindowRECT.Right
 			this._height := WindowRECT.Bottom
 		} else {
@@ -98,24 +101,6 @@ class _CScrollGui extends _CGui {
 			return
 		}
 
-		if (debug) {
-			OutputDebug, % "[" A_ThisFunc " : " this._hwnd "] Window changed size to (w,h): " this._SerializeWH(WindowRECT)
-		}
-
-		if (hwnd = 0){
-			hwnd := this._hwnd
-			if (debug){
-				OutputDebug, % "[" A_ThisFunc " : " this._hwnd "] Called without params - hwnd: " this.FormatHex(hwnd)
-			}
-		} else if (this._hwnd != hwnd){
-			; message not for this window
-			return
-		} else {
-			if (debug) {
-				OutputDebug, % "[" A_ThisFunc " : " this._hwnd "]Called with params - hwnd: " this.FormatHex(hwnd)
-			}
-		}
-		
 		CanvasRECT := this._GetClientSize()
 		Width := WindowRECT.Right
 		Height := WindowRECT.Bottom
@@ -164,16 +149,12 @@ class _CScrollGui extends _CGui {
 
 		if (hwnd = 0){
 			hwnd := this._hwnd
-			if (debug) {
-				OutputDebug % "[" A_ThisFunc " : " this._hwnd "] Called without params"
-			}
 		} else if (this._hwnd != hwnd){
 			; Message not for this window
-			return
-		} else {
 			if (debug) {
-				OutputDebug, % "[" A_ThisFunc " : " this._hwnd "] Called with params"
-			}
+				OutputDebug, % "[" A_ThisFunc " : " this._hwnd "] Aborting as message is not for this window: " this._SerializeWH(WindowRECT) " / " this._SerializeWH(CanvasRECT)
+			}		
+			return
 		}
 		
 		WindowRECT := this._GetClientRect()
@@ -182,9 +163,12 @@ class _CScrollGui extends _CGui {
 		if (this._Scroll_Width == WindowRECT.Right && this._Scroll_Height == WindowRECT.Bottom && this._Client_Width == CanvasRECT.Right && this._Client_Height == CanvasRECT.Bottom){
 			; Client Size did not change
 			if (debug) {
-				OutputDebug, % "[" A_ThisFunc " : " this._hwnd "] Aborting as WindowRECT and CanvasRECT have not changed - " this._SerializeWH(WindowRECT) " / " this._SerializeWH(CanvasRECT)
+				OutputDebug, % "[" A_ThisFunc " : " this._hwnd "] Aborting as WindowRECT and CanvasRECT have not changed: " this._SerializeWH(WindowRECT) " / " this._SerializeWH(CanvasRECT)
 			}
 			return
+		}
+		if (debug) {
+			OutputDebug, % "[" A_ThisFunc " : " this._hwnd "] Adjusting scrollbars"
 		}
 		this._Client_Width := CanvasRECT.Right
 		this._Client_Height := CanvasRECT.Bottom
@@ -449,6 +433,8 @@ class _CScrollGui extends _CGui {
 ; Wrap AHK functionality in a standardized, easy to use, syntactically similar class
 Class _CGui {
 	_type := "w"
+	_width := 0
+	_height := 0
 	; equivalent to Gui, New, <params>
 	; put parent as param 1
 	__New(parent := 0, Param2 := "", Param3 := "", Param4 := ""){
