@@ -72,15 +72,15 @@ class _CScrollGui extends _CGui {
 		this.OnMessage(WM_VSCROLL, fn)
 		this.OnMessage(WM_HSCROLL, fn)
 		
-		fn := bind(this._GuiResized, this)
+		fn := bind(this._GuiPageChanged, this)
 		this.OnMessage(WM_SIZE, fn, 999)
-		;fn := bind(this._ContentsResized, this)
+		;fn := bind(this._GuiRangeChanged, this)
 		;this.OnMessage(WM_SIZE, fn, 999)
 	}
 	
 	; VARIABLE USAGE SEEMS SENSIBLE
 	; This window resized - If scrollbar(s) all the way at the end and you size up, child needs to be scrolled in the direction of the size up.
-	_GuiResized(WParam:= 0, lParam := 0, Msg := 0, hwnd := 0){
+	_GuiPageChanged(WParam:= 0, lParam := 0, Msg := 0, hwnd := 0){
 		static debug := 0
 		Static SB_HORZ := 0, SB_VERT = 1
 		static SIF_PAGE := 0x2
@@ -118,8 +118,8 @@ class _CScrollGui extends _CGui {
 		this._SetSScrollbarPage()
 	}
 
-	; The contents of a Gui changed size (eg Controls were added to a Gui
-	_ContentsResized(WParam := 0, lParam := 0, msg := 0, hwnd := 0){
+	; The contents of a Gui changed size (eg Controls were added to a Gui)
+	_GuiRangeChanged(WParam := 0, lParam := 0, msg := 0, hwnd := 0){
 		static debug := 0
 		
 		; obj vars used:
@@ -138,7 +138,7 @@ class _CScrollGui extends _CGui {
 			return
 		}
 		
-		WindowRECT := this._GetClientRect()	; remove? _GuiResized should set _width and _height.
+		WindowRECT := this._GetClientRect()	; remove? _GuiPageChanged should set _width and _height.
 		CanvasRECT := this._GetClientSize()
 		; Use _Scroll_Width not _Width, as that that indicates the last size of WindowRECT that this function saw
 		if (this._Scroll_Width == WindowRECT.Right && this._Scroll_Height == WindowRECT.Bottom && this._Client_Width == CanvasRECT.Right && this._Client_Height == CanvasRECT.Bottom){
@@ -172,7 +172,7 @@ class _CScrollGui extends _CGui {
 		static debug := 1
 		
 		; obj vars used
-		; this._Client_Width / this._Client_Height (GET), Used by _ContentsResized (GET/SET), which is the parent to this call
+		; this._Client_Width / this._Client_Height (GET), Used by _GuiRangeChanged (GET/SET), which is the parent to this call
 		
 		Static SB_HORZ := 0, SB_VERT = 1
 		static SIF_ALL := 0x17
@@ -207,9 +207,9 @@ class _CScrollGui extends _CGui {
 		Static SB_HORZ := 0, SB_VERT = 1
 		static SIF_PAGE := 0x2
 		; obj vars used:
-		; this._width, this._height - GET, Used by: _GuiResized(GET/SET) - SEEMS LEGIT
+		; this._width, this._height - GET, Used by: _GuiPageChanged(GET/SET) - SEEMS LEGIT
 		
-		; This._Scroll_Width . This._Scroll_Height (GET / SET), used by _ContentsResized (GET/SET)
+		; This._Scroll_Width . This._Scroll_Height (GET / SET), used by _GuiRangeChanged (GET/SET)
 		; This._Scroll_PosH / This._Scroll_PosV (GET/SET), used by _Scroll (_SET)
 
 		; Update Scroll bars and Drag window on size up if needed.
@@ -590,7 +590,7 @@ Class _CGui {
 			}
 			Gui, new, % "hwndhwnd " aParams[1], % aParams[3], % aParams[4]
 			this._hwnd := hwnd
-			; Call _GuiResized() here?
+			; Call _GuiPageChanged() here?
 			_CGui._HwndLookup[hwnd] := this
 		} else if (aParams[1] = "add") {
 			if (this._GuiOptions.flags.v || this._GuiOptions.flags.g){
@@ -608,7 +608,7 @@ Class _CGui {
 				OutputDebug, % " "
 			}
 			; We added something to this Gui, Child size changed.
-			this._ContentsResized()
+			this._GuiRangeChanged()
 			return r
 		} else if (aParams[1] = "show") {
 			aParams[2] := this._SerializeOptions()
@@ -630,7 +630,7 @@ Class _CGui {
 	}
 	
 	; Gui's child size changed.
-	_ContentsResized(){
+	_GuiRangeChanged(){
 		
 	}
 	
