@@ -170,10 +170,7 @@ class _CScrollGui extends _CGui {
 		static debug := 1
 		
 		; obj vars used
-		; this._Client_Width / this._Client_Height (GET), Used by _ContentsResized (GET/SET), 
-		; this._Scroll_Width / this._Scroll_Height (GET), Used by _ScrollBarGuiSized (GET/SET), _ContentsResized(GET/SET)
-		
-		; this._Scroll_Width / this._Scroll_Height should not be needed in here?
+		; this._Client_Width / this._Client_Height (GET), Used by _ContentsResized (GET/SET), which is the parent to this call
 		
 		Static SB_HORZ := 0, SB_VERT = 1
 		static SIF_ALL := 0x17
@@ -183,7 +180,6 @@ class _CScrollGui extends _CGui {
 		lpsi := this._BlankScrollInfo()
 		;lpsi.fMask := SIF_ALL
 		lpsi.fMask := SIF_RANGE
-		; Adjust scrollbar MAX only ?
 		lpsi.nMin := 0
 		lpsi.nMax := this._Client_Height
 		;lpsi.nPage := this._Scroll_Height
@@ -194,7 +190,7 @@ class _CScrollGui extends _CGui {
 		this._SetScrollInfo(SB_HORZ, lpsi)
 		
 		if (debug) {
-			OutputDebug, % "[ " this._FormatHwnd() " ] " this._FormatFuncName(A_ThisFunc) "   - CLIENT SIZED - Window / Client size (w,h): " this._Scroll_Width "," this._Scroll_Height "  /  " this._Client_Width "," this._Client_Height
+			OutputDebug, % "[ " this._FormatHwnd() " ] " this._FormatFuncName(A_ThisFunc) "   - CLIENT SIZED - (w,h): " this._Client_Width "," this._Client_Height
 		}
 	}
 
