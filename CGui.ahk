@@ -164,8 +164,13 @@ class _CScrollGui extends _CGui {
 		this._SetScrollbarRange()
 	}
 	
-	; Adjust scrollbars due to change in client height.
-	; Try and merge / share code with _SetSScrollbarPage
+	; Range / Page merge notes
+	; this._Client_Width / Height is a CanvasRECT = RANGE
+	; this._Scroll_Width / Height is a WindowRECT = PAGE
+
+	; merge _Client_Height / _Client_Width and _Scroll_Height / _Scroll_Width on to one Scrollinfo object
+	
+	; Adjust scrollbars due to change in RANGE.
 	; RANGE = the TOTAL area this Window contains (ie the size of the RECT encompassing all it's child objects)
 	; If the RANGE is bigger than the PAGE, scrollbars need to be shown
 	_SetScrollbarRange(){
@@ -197,11 +202,8 @@ class _CScrollGui extends _CGui {
 		}
 	}
 
-	; this._Client_Width / Height is a CanvasRECT
-	; this._Scroll_Width / Height is a WindowRECT - same as _width?
-
-	; Update scrollbars due to window resize and drag if needed
-	; Try and merge / share code with _SetScrollbarRange
+	; Update scrollbars due to PAGE resize AND DRAG ON PAGE INCREASE IF NEEDED
+	; If page at maximum extent (scrollbar all the way to right or bottom) when you resize down/right (get bigger), the Contents needs to "drag" (move) with the cursor.
 	; PAGE = The "Window" through which you can see a portion of the RANGE.
 	_SetSScrollbarPage(){
 		static debug := 1
