@@ -15,9 +15,13 @@ Class _CGuiControl extends _CScrollGui {
 	; equivalent to Gui, Add, <params>
 	; Pass parent as param 1
 	__New(aParams*){
+		static debug := 0
 		aParams.Remove
 		this._parent := aParams[1]
 		this._type := aParams[2]
+		if (debug) {
+			OutputDebug, % "[ " this._FormatHwnd() " ] " this._FormatFuncName(A_ThisFunc) "   - Constructor adding GUIControl"
+		}
 		; Must use base gui commands here, as this.Gui("Add",...) points here!
 		Gui, % this._parent._hwnd ":Add", % aParams[2], % "hwndhwnd " aParams[3], % aParams[4]
 		this._hwnd := hwnd
@@ -64,7 +68,7 @@ class _CScrollGui extends _CGui {
 		this._Scroll_V := 1
 		this._Scroll_UseShift := False
 
-		this.AdjustToChild()
+		;this.AdjustToChild()
 		
 		fn := bind(this._ScrollHandler, this)
 		this.OnMessage(WM_VSCROLL, fn)
@@ -72,8 +76,8 @@ class _CScrollGui extends _CGui {
 		
 		fn := bind(this.AdjustToParent, this)
 		this.OnMessage(WM_SIZE, fn, 999)
-		fn := bind(this.AdjustToChild, this)
-		this.OnMessage(WM_SIZE, fn, 999)
+		;fn := bind(this.AdjustToChild, this)
+		;this.OnMessage(WM_SIZE, fn, 999)
 	}
 	
 	; AKA Window resized - If scrollbar(s) all the way at the end and you size up, child needs to be scrolled in the direction of the size up.
@@ -84,31 +88,32 @@ class _CScrollGui extends _CGui {
 		static WindowRECT := 0
 		
 		WindowRECT := this._GetClientRect()
-		if (WindowRECT.Right != this._width && WindowRECT.Bottom != this._height){
+		if (WindowRECT.Right != this._width || WindowRECT.Bottom != this._height){
+			; Window changed since we were last in here, or this is first time in here.
 			this._width := WindowRECT.Right
 			this._height := WindowRECT.Bottom
 		} else {
 			if (debug) {
-				OutputDebug, % "[" A_ThisFunc " : " this._hwnd "] Aborting as WindowRECT has not changed - " this._SerializeWH(WindowRECT)
+				OutputDebug, % "[ " this._FormatHwnd() " ] " this._FormatFuncName(A_ThisFunc) "   - Aborting as WindowRECT has not changed - " this._SerializeWH(WindowRECT)
 			}
 			return
 		}
 
 		if (debug) {
-			OutputDebug, % "[" A_ThisFunc " : " this._hwnd "] Window changed size to (w,h): " this._SerializeWH(WindowRECT)
+			OutputDebug, % "[ " this._FormatHwnd() " ] " this._FormatFuncName(A_ThisFunc) "   - Window changed size to (w,h): " this._SerializeWH(WindowRECT)
 		}
 
 		if (hwnd = 0){
 			hwnd := this._hwnd
 			if (debug){
-				OutputDebug, % "[" A_ThisFunc " : " this._hwnd "] Called without params - hwnd: " this.FormatHex(hwnd)
+				OutputDebug, % "[ " this._FormatHwnd() " ] " this._FormatFuncName(A_ThisFunc) "   - Called without params - hwnd: " this.FormatHex(hwnd)
 			}
 		} else if (this._hwnd != hwnd){
 			; message not for this window
 			return
 		} else {
 			if (debug) {
-				OutputDebug, % "[" A_ThisFunc " : " this._hwnd "]Called with params - hwnd: " this.FormatHex(hwnd)
+				OutputDebug, % "[ " this._FormatHwnd() " ] " this._FormatFuncName(A_ThisFunc) "   - Called with params - hwnd: " this.FormatHex(hwnd)
 			}
 		}
 		
@@ -161,14 +166,14 @@ class _CScrollGui extends _CGui {
 		if (hwnd = 0){
 			hwnd := this._hwnd
 			if (debug) {
-				OutputDebug % "[" A_ThisFunc " : " this._hwnd "] Called without params"
+				OutputDebug, % "[ " this._FormatHwnd() " ] " this._FormatFuncName(A_ThisFunc) "   - Called without params"
 			}
 		} else if (this._hwnd != hwnd){
 			; Message not for this window
 			return
 		} else {
 			if (debug) {
-				OutputDebug, % "[" A_ThisFunc " : " this._hwnd "] Called with params"
+				OutputDebug, % "[ " this._FormatHwnd() " ] " this._FormatFuncName(A_ThisFunc) "   - Called with params"
 			}
 		}
 		
@@ -178,7 +183,7 @@ class _CScrollGui extends _CGui {
 		if (this._Scroll_Width == WindowRECT.Right && this._Scroll_Height == WindowRECT.Bottom && this._Client_Width == CanvasRECT.Right && this._Client_Height == CanvasRECT.Bottom){
 			; Client Size did not change
 			if (debug) {
-				OutputDebug, % "[" A_ThisFunc " : " this._hwnd "] Aborting as WindowRECT and CanvasRECT have not changed - " this._SerializeWH(WindowRECT) " / " this._SerializeWH(CanvasRECT)
+				OutputDebug, % "[ " this._FormatHwnd() " ] " this._FormatFuncName(A_ThisFunc) "   - Aborting as WindowRECT and CanvasRECT have not changed - " this._SerializeWH(WindowRECT) " / " this._SerializeWH(CanvasRECT)
 			}
 			return
 		}
@@ -450,6 +455,7 @@ Class _CGui {
 	; put parent as param 1
 	__New(parent := 0, Param2 := "", Param3 := "", Param4 := ""){
 		static WM_MOUSEWHEEL := 0x020A, WM_MOUSEHWHEEL := 0x020E
+		static debug := 0
 		
 		this._parent := parent
 		if (this._parent = 0){
@@ -462,6 +468,9 @@ Class _CGui {
 			; Therefore, one handler should perform the calculations once to determine which HWND should get the wheel input, if any.
 			fn := bind(this._WheelHandler, this)
 			OnMessage(WM_MOUSEWHEEL, fn, 999)
+		}
+		if (debug){
+			OutputDebug, % "[ " this._FormatHwnd() " ] " this._FormatFuncName(A_ThisFunc) "   - CONSTRUCTOR calling Gui, New: " aParams[1] ", " aParams[2] ", " aParams[3] ", " aParams[4]
 		}
 		this.Gui("new", Param2, Param3, Param4)
 	}
@@ -501,9 +510,9 @@ Class _CGui {
 	}
 	
 	Gui(aParams*){
-		static debug := 0
+		static debug := 1
 		if (debug){
-			OutputDebug, % "[" A_ThisFunc " : " this._hwnd "] PROCESSING COMMAND: " aParams[1] ", " aParams[2] ", " aParams[3] ", " aParams[4]
+			OutputDebug, % "[ " this._FormatHwnd() " ] " this._FormatFuncName(A_ThisFunc) "   - START: " aParams[1] ", " aParams[2] ", " aParams[3] ", " aParams[4]
 		}
 		; Store Guis option object
 		if (aParams[1] = "add"){
@@ -520,7 +529,9 @@ Class _CGui {
 		}
 		if (aParams[1] = "new"){
 			aParams[1] := this._SerializeOptions()
-			;OutputDebug, % "[" A_ThisFunc " : " this._hwnd "] Executing Gui Cmd (New): " aParams[1] ", " aParams[2] ", " aParams[3] ", " aParams[4]
+			if (debug) {
+				OutputDebug, % "[ " this._FormatHwnd() " ] " this._FormatFuncName(A_ThisFunc) "   - NEW: " aParams[2] ", " aParams[3] ", " aParams[4]
+			}
 			Gui, new, % "hwndhwnd " aParams[1], % aParams[3], % aParams[4]
 			this._hwnd := hwnd
 			_CGui._HwndLookup[hwnd] := this
@@ -532,33 +543,48 @@ Class _CGui {
 			}
 			aParams[3] := this._SerializeOptions()
 			if (debug) {
-				OutputDebug, % "[" A_ThisFunc " : " this._hwnd "] GUI COMMAND ENDS: " aParams[1] ", " aParams[2] ", " aParams[3] ", " aParams[4]
-				OutputDebug, % " "
+				OutputDebug, % "[ " this._FormatHwnd() " ] " this._FormatFuncName(A_ThisFunc) "   - ADD: " aParams[2] " - Control Constructor: " aParams[1] ", " aParams[2] ", " aParams[3] ", " aParams[4]
 			}
-			return new this.CGuiControl(this, aParams[2], aParams[3], aParams[4])
+			r := new this.CGuiControl(this, aParams[2], aParams[3], aParams[4])
+			if (debug) {
+				OutputDebug, % "[ " this._FormatHwnd() " ] "  this._FormatFuncName(A_ThisFunc) "   - ADD: " aParams[2] " - RESULT: Control Hwnd " r._hwnd
+				OutputDebug, % " "
+			}			
+			return r
 		} else if (aParams[1] = "show") {
 			aParams[2] := this._SerializeOptions()
-			;OutputDebug, % "[" A_ThisFunc " : " this._hwnd "] Executing Gui Cmd (Default): " aParams[1] ", " aParams[2] ", " aParams[3] ", " aParams[4]
+			if (debug) {
+				OutputDebug, % "[ " this._FormatHwnd() " ] " this._FormatFuncName(A_ThisFunc) "   - SHOW: " aParams[2] ", " aParams[3] ", " aParams[4]
+			}
 			Gui, % this._hwnd ":" aParams[1], % aParams[2], % aParams[3], % aParams[4]
 		} else {
 			aParams[2] := this._SerializeOptions()
-			;OutputDebug, % "[" A_ThisFunc " : " this._hwnd "] Executing Gui Cmd (Default): " aParams[1] ", " aParams[2] ", " aParams[3] ", " aParams[4]
+			if (debug) {
+				OutputDebug, % "[ " this._FormatHwnd() " ] " this._FormatFuncName(A_ThisFunc) "   - " aParams[1] "(Generic): " aParams[2] ", " aParams[3] ", " aParams[4]
+			}
 			Gui, % this._hwnd ":" aParams[1], % aParams[2], % aParams[3], % aParams[4]
 		}
 		if (debug){
-			OutputDebug, % "[" A_ThisFunc " : " this._hwnd "] GUI COMMAND ENDS"
+			OutputDebug, % "[ " this._FormatHwnd() " ] " this._FormatFuncName(A_ThisFunc) "   - END"
 			OutputDebug, % " "
 		}
 	}
 	
+	
 	; The same as Gui, +Option - but lets you pass objects instead of hwnds
+	; ToDo: Remove. Replace with this.Gui(option, value)
 	GuiOption(option, value){
+		debug := 1
+		if (debug) {
+			OutputDebug, % "[ " this._FormatHwnd() " ] " this._FormatFuncName(A_ThisFunc) "   - GUIOPTION: " option " = " value
+		}
 		Gui, % this._hwnd ":" option, value
 		return this
 	}
 	
 	; Wraps GuiControl to use hwnds and function binding etc
 	GuiControl(aParams*){
+		static debug := 1
 		m := SubStr(aParams[1],1,1)
 		if (m = "+" || m = "-"){
 			; Options
@@ -570,10 +596,16 @@ Class _CGui {
 				aParams[2]._glabel := fn
 				; Bind glabel event to _OnChange method
 				fn := bind(aParams[2]._OnChange,aParams[2])
+				if (debug) {
+					OutputDebug, % "[ " this._FormatHwnd() " ] " this._FormatFuncName(A_ThisFunc) "   - GUICONTROL - BIND : " aParams[2]
+				}
 				GuiControl % aParams[1], % aParams[2]._hwnd, % fn
 				return this
 			}
 		} else {
+			if (debug) {
+				OutputDebug, % "[ " this._FormatHwnd() " ] " this._FormatFuncName(A_ThisFunc) "   - GUICONTROL: " aParams[2] ", " aParams[3] ", " aParams[4]
+			}
 			GuiControl, % aParams[1], % aParams[2]._hwnd, % aParams[3]
 			return this
 		}
@@ -597,14 +629,14 @@ Class _CGui {
 		static xywh_lookup := {x: "_Width", y: "_Height", w: "_Width", h: "_Height"}
 		static wh_types := {w: 1, h: 1}
 		if (debug) {
-			OutputDebug, % "[" A_ThisFunc " : " this._hwnd "] Processing options: " options
+			OutputDebug, % "[ " this._FormatHwnd() " ] " this._FormatFuncName(A_ThisFunc) "   - Processing options: " options
 		}
 		ret := { flags: {}, options: {}, signs: {} }
 		opts := StrSplit(options, A_Space)
 		Loop % opts.MaxIndex() {
 			opt := opts[A_Index]
 			if (debug) {
-				OutputDebug, % "[" A_ThisFunc " : " this._hwnd "] Processing option: " opt
+				OutputDebug, % "[ " this._FormatHwnd() " ] " this._FormatFuncName(A_ThisFunc) "   - Processing option: " opt
 			}
 			; Strip +/- prefix if it exists
 			sign := SubStr(opt,1,1)
@@ -636,11 +668,11 @@ Class _CGui {
 						if (cmd = "show") {
 							; Gui, Show, ...  - available size is that of parent (or desktop)
 							max := this._parent[xywh_lookup[opt]]
-							;OutputDebug, % "[" A_ThisFunc " : " this._hwnd "] HWND " this._hwnd " OPTIONS/OPTION (" options "/" opt ") reports Parent (" this._parent._hwnd ") Width: " max
+							OutputDebug, % "[ " this._FormatHwnd() " ] " this._FormatFuncName(A_ThisFunc) "   - OPTIONS/OPTION (" options "/" opt ") reports Parent (" this._parent._hwnd ") Width: " max
 						} else {
 							; Gui, Add, ... - available size is that of this
 							max := this[xywh_lookup[opt]]
-							;OutputDebug, % "[" A_ThisFunc " : " this._hwnd "] HWND " this._hwnd " OPTIONS/OPTION (" options "/" opt ") reports Width: " max
+							OutputDebug, % "[ " this._FormatHwnd() " ] " this._FormatFuncName(A_ThisFunc) "   - OPTIONS/OPTION (" options "/" opt ") reports Width: " max
 						}
 					}
 					
@@ -676,7 +708,7 @@ Class _CGui {
 			Count++
 		}
 		if (debug){
-			OutputDebug, % "[" A_ThisFunc " : " this._hwnd "] Returning: " options
+			OutputDebug, % "[ " this._FormatHwnd() " ] " this._FormatFuncName(A_ThisFunc) "   - Returning: " options
 			;OutputDebug, % " "
 		}
 
@@ -690,6 +722,26 @@ Class _CGui {
 	
 	FormatHex(val){
 		return Format("{:#x}", val+0)
+	}
+	
+	; Human readable hwnd, or padded number if not set
+	_FormatHwnd(hwnd := -1){
+		if (hwnd = -1){
+			hwnd := this._hwnd
+		}
+		if (!hwnd){
+			return 0x000000
+		} else {
+			return hwnd
+		}
+	}
+	
+	_FormatFuncName(func){
+		static max := 25
+		if (StrLen(func) > max){
+			func := Substr(func, 1, max)
+		}
+		return Format("{:-" max "s}",func)
 	}
 }
 
