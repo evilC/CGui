@@ -80,7 +80,7 @@ class _CScrollGui extends _CGui {
 	
 	; This window resized - If scrollbar(s) all the way at the end and you size up, child needs to be scrolled in the direction of the size up.
 	_GuiResized(WParam:= 0, lParam := 0, Msg := 0, hwnd := 0){
-		static debug := 1
+		static debug := 0
 		Static SB_HORZ := 0, SB_VERT = 1
 		static SIF_PAGE := 0x2
 		;static WindowRECT := 0
@@ -112,11 +112,74 @@ class _CScrollGui extends _CGui {
 			OutputDebug, % "[ " this._FormatHwnd() " ] " this._FormatFuncName(A_ThisFunc) "   - Window changed size to (w,h): " this._SerializeWH(WindowRECT)
 		}
 
-		this._UpdateAndDrag()
+		this._ScrollBarGuiSized()
 	}
 
-	; Update scrollbars and drag if needed
-	_UpdateAndDrag(){
+	; The contents of a Gui changed size (eg Controls were added to a Gui
+	_ContentsResized(WParam := 0, lParam := 0, msg := 0, hwnd := 0){
+		static debug := 0
+
+		; Determine if this message is for us
+		if (hwnd = 0){
+			hwnd := this._hwnd
+		} else if (this._hwnd != hwnd){
+			; Message not for this window
+			;if (debug) {
+			;	OutputDebug, % "[ " this._FormatHwnd() " ] " this._FormatFuncName(A_ThisFunc) "   - Ignoring message"
+			;}
+			return
+		}
+		
+		WindowRECT := this._GetClientRect()
+		CanvasRECT := this._GetClientSize()
+		; Use _Scroll_Width not _Width, as that that indicates the last size of WindowRECT that this function saw
+		if (this._Scroll_Width == WindowRECT.Right && this._Scroll_Height == WindowRECT.Bottom && this._Client_Width == CanvasRECT.Right && this._Client_Height == CanvasRECT.Bottom){
+			; Client Size did not change
+			if (debug) {
+				OutputDebug, % "[ " this._FormatHwnd() " ] " this._FormatFuncName(A_ThisFunc) "   - Aborting as WindowRECT and CanvasRECT have not changed - " this._SerializeWH(WindowRECT) " / " this._SerializeWH(CanvasRECT)
+			}
+			return
+		}
+		if (debug) {
+			OutputDebug, % "[ " this._FormatHwnd() " ] " this._FormatFuncName(A_ThisFunc) "   - New Window / Client Sizes (w,h): " this._SerializeWH(WindowRECT) " / " this._SerializeWH(CanvasRECT)
+		}
+		
+		; Set object vars
+		this._Client_Width := CanvasRECT.Right
+		this._Client_Height := CanvasRECT.Bottom
+		
+		this._Scroll_Width := WindowRECT.Right
+		this._Scroll_Height := WindowRECT.Bottom
+		
+		this._MaxH := WindowRECT.Right
+		this._MaxV := WindowRECT.Bottom
+		this._LineH := Ceil(this._MaxH / 20)
+		this._LineV := Ceil(this._MaxV / 20)
+		this._ScrollBarClientSized()
+	}
+	
+	; Adjust scrollbars due to change in client height.
+	; Try and merge / share code with _ScrollBarGuiSized
+	_ScrollBarClientSized(){
+		Static SB_HORZ := 0, SB_VERT = 1
+		static SIF_ALL := 0x17
+		; Perform Scroll if needed
+		lpsi := this._BlankScrollInfo()
+		lpsi.fMask := SIF_ALL
+		
+		lpsi.nMin := 0
+		lpsi.nMax := this._Client_Height
+		lpsi.nPage := this._Scroll_Height
+		this._SetScrollInfo(SB_VERT, lpsi)
+		
+		lpsi.nMax := this._Client_Width
+		lpsi.nPage := this._Scroll_Width
+		this._SetScrollInfo(SB_HORZ, lpsi)
+	}
+
+	; Update scrollbars due to window resize and drag if needed
+	; Try and merge / share code with _ScrollBarClientSized
+	_ScrollBarGuiSized(){
 		static debug := 1
 		Static SB_HORZ := 0, SB_VERT = 1
 		static SIF_PAGE := 0x2
@@ -178,205 +241,6 @@ class _CScrollGui extends _CGui {
 			}
 		}
 	}
-	/*
-	; AKA Window resized - If scrollbar(s) all the way at the end and you size up, child needs to be scrolled in the direction of the size up.
-	AdjustToParent(WParam:= 0, lParam := 0, Msg := 0, hwnd := 0){
-		static debug := 0
-		Static SB_HORZ := 0, SB_VERT = 1
-		static SIF_PAGE := 0x2
-		static WindowRECT := 0
-		
-		WindowRECT := this._GetClientRect()
-		if (WindowRECT.Right != this._width || WindowRECT.Bottom != this._height){
-			; Window changed since we were last in here, or this is first time in here.
-			this._width := WindowRECT.Right
-			this._height := WindowRECT.Bottom
-		} else {
-			if (debug) {
-				OutputDebug, % "[ " this._FormatHwnd() " ] " this._FormatFuncName(A_ThisFunc) "   - Aborting as WindowRECT has not changed - " this._SerializeWH(WindowRECT)
-			}
-			return
-		}
-
-		if (debug) {
-			OutputDebug, % "[ " this._FormatHwnd() " ] " this._FormatFuncName(A_ThisFunc) "   - Window changed size to (w,h): " this._SerializeWH(WindowRECT)
-		}
-
-		if (hwnd = 0){
-			hwnd := this._hwnd
-			if (debug){
-				OutputDebug, % "[ " this._FormatHwnd() " ] " this._FormatFuncName(A_ThisFunc) "   - Called without params - hwnd: " this.FormatHex(hwnd)
-			}
-		} else if (this._hwnd != hwnd){
-			; message not for this window
-			return
-		} else {
-			if (debug) {
-				OutputDebug, % "[ " this._FormatHwnd() " ] " this._FormatFuncName(A_ThisFunc) "   - Called with params - hwnd: " this.FormatHex(hwnd)
-			}
-		}
-		
-		CanvasRECT := this._GetClientSize()
-		Width := WindowRECT.Right
-		Height := WindowRECT.Bottom
-		If (A_EventInfo <> 1) {
-			SH := SV := 0
-			If This._Scroll_H {
-				If (Width <> This._Scroll_Width) {
-					lpsi := this._BlankScrollInfo()
-					lpsi.fMask := SIF_PAGE
-					lpsi.nPage := Width + 1
-					This._SetScrollInfo(SB_HORZ, lpsi)
-
-					This._Scroll_Width := Width
-					This._GetScrollInfo(SB_HORZ, SI)
-					PosH := SI.nPos
-					SH := This._Scroll_PosH - PosH
-					This._Scroll_PosH := PosH
-				}
-			}
-			If This._Scroll_V {
-				If (Height <> This._Scroll_Height) {
-					lpsi := this._BlankScrollInfo()
-					lpsi.fMask := SIF_PAGE
-					lpsi.nPage := Height + 1
-					This._SetScrollInfo(SB_VERT, lpsi)
-					
-					This._Scroll_Height := Height
-					This._GetScrollInfo(SB_VERT, SI)
-					PosV := SI.nPos
-					SV := This._Scroll_PosV - PosV
-					This._Scroll_PosV := PosV
-				}
-			}
-			if (SV || SH){
-				this._ScrollWindow(SH, SV)
-			}
-		}
-	}
-	*/
-	
-	; The contents of a Gui changed size (eg Controls were added to a Gui
-	_ContentsResized(WParam := 0, lParam := 0, msg := 0, hwnd := 0){
-		static debug := 1
-
-		; Determine if this message is for us
-		if (hwnd = 0){
-			hwnd := this._hwnd
-		} else if (this._hwnd != hwnd){
-			; Message not for this window
-			;if (debug) {
-			;	OutputDebug, % "[ " this._FormatHwnd() " ] " this._FormatFuncName(A_ThisFunc) "   - Ignoring message"
-			;}
-			return
-		}
-		
-		WindowRECT := this._GetClientRect()
-		CanvasRECT := this._GetClientSize()
-		; Use _Scroll_Width not _Width, as that that indicates the last size of WindowRECT that this function saw
-		if (this._Scroll_Width == WindowRECT.Right && this._Scroll_Height == WindowRECT.Bottom && this._Client_Width == CanvasRECT.Right && this._Client_Height == CanvasRECT.Bottom){
-			; Client Size did not change
-			if (debug) {
-				OutputDebug, % "[ " this._FormatHwnd() " ] " this._FormatFuncName(A_ThisFunc) "   - Aborting as WindowRECT and CanvasRECT have not changed - " this._SerializeWH(WindowRECT) " / " this._SerializeWH(CanvasRECT)
-			}
-			return
-		}
-		if (debug) {
-			OutputDebug, % "[ " this._FormatHwnd() " ] " this._FormatFuncName(A_ThisFunc) "   - New Window / Client Sizes (w,h): " this._SerializeWH(WindowRECT) " / " this._SerializeWH(CanvasRECT)
-		}
-		
-		; Set object vars
-		this._Client_Width := CanvasRECT.Right
-		this._Client_Height := CanvasRECT.Bottom
-		
-		this._Scroll_Width := WindowRECT.Right
-		this._Scroll_Height := WindowRECT.Bottom
-		
-		this._MaxH := WindowRECT.Right
-		this._MaxV := WindowRECT.Bottom
-		this._LineH := Ceil(this._MaxH / 20)
-		this._LineV := Ceil(this._MaxV / 20)
-		this._AdjustScrollBars()
-	}
-	
-	; Adjust scrollbars to current window / client height.
-	_AdjustScrollBars(){
-		Static SB_HORZ := 0, SB_VERT = 1
-		static SIF_ALL := 0x17
-		; Perform Scroll if needed
-		lpsi := this._BlankScrollInfo()
-		lpsi.fMask := SIF_ALL
-		
-		lpsi.nMin := 0
-		lpsi.nMax := this._Client_Height
-		lpsi.nPage := this._Scroll_Height
-		this._SetScrollInfo(SB_VERT, lpsi)
-		
-		lpsi.nMax := this._Client_Width
-		lpsi.nPage := this._Scroll_Width
-		this._SetScrollInfo(SB_HORZ, lpsi)
-	}
-
-	/*
-	; Normal resize routine - Just adjust the scrollbars.
-	AdjustToChild(WParam := 0, lParam := 0, msg := 0, hwnd := 0){
-		static debug := 1
-		Static SB_HORZ := 0, SB_VERT = 1
-		static SIF_ALL := 0x17
-		;static WindowRECT, CanvasRECT
-
-		if (hwnd = 0){
-			hwnd := this._hwnd
-			if (debug) {
-				OutputDebug, % "[ " this._FormatHwnd() " ] " this._FormatFuncName(A_ThisFunc) "   - Called without params"
-			}
-		} else if (this._hwnd != hwnd){
-			; Message not for this window
-			return
-		} else {
-			if (debug) {
-				OutputDebug, % "[ " this._FormatHwnd() " ] " this._FormatFuncName(A_ThisFunc) "   - Called with params"
-			}
-		}
-		
-		WindowRECT := this._GetClientRect()
-		CanvasRECT := this._GetClientSize()
-		; Use _Scroll_Width not _Width, as that that indicates the last size of WindowRECT that this function saw
-		if (this._Scroll_Width == WindowRECT.Right && this._Scroll_Height == WindowRECT.Bottom && this._Client_Width == CanvasRECT.Right && this._Client_Height == CanvasRECT.Bottom){
-			; Client Size did not change
-			if (debug) {
-				OutputDebug, % "[ " this._FormatHwnd() " ] " this._FormatFuncName(A_ThisFunc) "   - Aborting as WindowRECT and CanvasRECT have not changed - " this._SerializeWH(WindowRECT) " / " this._SerializeWH(CanvasRECT)
-			}
-			return
-		}
-		this._Client_Width := CanvasRECT.Right
-		this._Client_Height := CanvasRECT.Bottom
-		
-		;if (!this._Scroll_Width || !this._Scroll_Height){
-			Width := WindowRECT.Right
-			Height := WindowRECT.Bottom
-		;}
-		this._Scroll_Width := Width
-		this._Scroll_Height := Height
-		
-		this._MaxH := WindowRECT.Right
-		this._MaxV := WindowRECT.Bottom
-		this._LineH := Ceil(this._MaxH / 20)
-		this._LineV := Ceil(this._MaxV / 20)
-		
-		lpsi := this._BlankScrollInfo()
-		lpsi.fMask := SIF_ALL
-		
-		lpsi.nMin := 0
-		lpsi.nMax := CanvasRECT.Bottom
-		lpsi.nPage := WindowRECT.Bottom
-		this._SetScrollInfo(SB_VERT, lpsi)
-		
-		lpsi.nMax := CanvasRECT.Right
-		lpsi.nPage := WindowRECT.Right
-		this._SetScrollInfo(SB_HORZ, lpsi)
-	}
-	*/
 	
 	_GetScrollInfo(fnBar, ByRef lpsi, hwnd := 0){
 		static SIF_ALL := 0x17
