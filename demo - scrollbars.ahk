@@ -22,17 +22,15 @@ GuiClose:
 Class MyClass extends CWindow {
 	__New(){
 		base.__New(0, "+Resize")
-		this.GUI_WIDTH := 200
+		this.Gui("Show", "w400 h400","Scroll Demo")
 		this.Gui("Margin",5,5)
 
 		this.ChildWindow1 := new CWindow(this, "-Border").GuiOption("+Parent", this)
+		this.ChildWindow1.Gui("Show", "x100 y100 w50% h50%")
 		Loop 20 {
-			this.ChildWindow1.Gui("Add", "Text", "Center xm w" this.GUI_WIDTH, "Text " A_Index)
+			this.ChildWindow1.Gui("Add", "Text", "Center xm w100%", "Text " A_Index)
 		}
-		this.ChildWindow1.Gui("Show", "x100 y100 w" this.GUI_WIDTH " h200")
-		this.ChildWindow1.AdjustToChild()
-		
-		this.Gui("Show", "w400 h400","Scroll Demo")
+
 	}
 	
 	SendMyString(){
