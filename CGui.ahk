@@ -157,9 +157,6 @@ class _CScrollGui extends _CGui {
 	; The contents of a Gui changed size (eg Controls were added to a Gui
 	_ContentsResized(WParam := 0, lParam := 0, msg := 0, hwnd := 0){
 		static debug := 1
-		Static SB_HORZ := 0, SB_VERT = 1
-		static SIF_ALL := 0x17
-		;static WindowRECT, CanvasRECT
 
 		; Determine if this message is for us
 		if (hwnd = 0){
@@ -197,7 +194,12 @@ class _CScrollGui extends _CGui {
 		this._MaxV := WindowRECT.Bottom
 		this._LineH := Ceil(this._MaxH / 20)
 		this._LineV := Ceil(this._MaxV / 20)
-		
+		this._AdjustScrollBars()
+	}
+	
+	_AdjustScrollBars(){
+		Static SB_HORZ := 0, SB_VERT = 1
+		static SIF_ALL := 0x17
 		; Perform Scroll if needed
 		lpsi := this._BlankScrollInfo()
 		lpsi.fMask := SIF_ALL
