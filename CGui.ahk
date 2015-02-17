@@ -85,7 +85,7 @@ class _CScrollGui extends _CGui {
 		static SIF_PAGE := 0x2
 		
 		; obj vars used:
-		; this._width, this._height: GET / SET
+		; this._width, this._height: GET / SET, Used By: _ScrollBarGuiSized(GET)
 		
 		; Ignore message if it is not for this window
 		if (hwnd = 0){
@@ -199,7 +199,9 @@ class _CScrollGui extends _CGui {
 		Static SB_HORZ := 0, SB_VERT = 1
 		static SIF_PAGE := 0x2
 		; obj vars used:
-		; this._width, this._height - GET
+		; this._width, this._height - GET, Used by: _GuiResized(GET/SET), 
+		; This._Scroll_Width . This._Scroll_Height (GET / SET), used by _ContentsResized (GET/SET)
+		; This._Scroll_PosH / This._Scroll_PosV (GET/SET), used by _Scroll (_SET)
 
 		; Update Scroll bars and Drag window on size up if needed.
 		If (A_EventInfo <> 1) {
