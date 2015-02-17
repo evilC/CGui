@@ -24,7 +24,7 @@ Class MyClass extends CWindow {
 		; Start using GUI commands
 		this.Gui("Margin",5,5)
 		; Add some text, dont bother storing result
-		this.Gui("Add", "Text", "Center xm ym w200 ", "HWND: " this._hwnd)
+		this.Gui("Add", "Text", "Center xm ym w200 ", "MAIN HWND: " this._hwnd)
 		this.Gui("Add", "Text", "Center xm y20 w" this.GUI_WIDTH, "Persistent (Remembered on Reload)")
 		
 		; Add an Edit box, store a reference on this
@@ -38,6 +38,7 @@ Class MyClass extends CWindow {
 
 		; Add a Button
 		this.mybtn := this.Gui("Add","Button","xm yp+30 w" this.GUI_WIDTH,"v Copy v")
+		OutputDebug, % "mybtn hwnd: " this.mybtn._hwnd
 		this.GuiControl("+g", this.mybtn, this.Test)	; pass object to bind g-label to, and method to bind to
 		this.Gui("Add","Text", "Center xm yp+30 w" this.GUI_WIDTH,"( Button is " this.mybtn._hwnd " )")
 		; Wire up the button

@@ -22,7 +22,6 @@ Class _CGuiControl extends _CScrollGui {
 		; hwnd being set #1
 		if (debug && _CGui_Global_Debug) {
 			OutputDebug, % "[" A_ThisFunc " : " this._hwnd "] GuiControl " aParams[2] " CONSTRUCTOR Setting Hwnd to : " hwnd
-			OutputDebug, % " "
 		}
 		this._hwnd := hwnd
 		return this
@@ -40,12 +39,12 @@ Class _CGuiControl extends _CScrollGui {
 	__Set(aParam, aValue){
 		static debug := 1
 		if (aParam = "value"){
-			; guicontrol called #1
 			if (debug && _CGui_Global_Debug) {
 				OutputDebug, % "[" A_ThisFunc " : " this._hwnd "] GuiControl " aParams[2] " __Set Calling GuiControl method on parent (" this._parent._hwnd ")"
 			}
-			; guicontrol called 2
+			; guicontrol called #1
 			return this._parent.GuiControl(,this,aValue)
+			;return this.GuiControl(,this,aValue)
 		}
 	}
 	
@@ -556,9 +555,14 @@ Class _CGui {
 			}
 			aParams[3] := this._SerializeOptions()
 			if (debug && _CGui_Global_Debug) {
-				OutputDebug, % "[" A_ThisFunc " : " this._hwnd "] GUI COMMAND ENDS: " aParams[1] ", " aParams[2] ", " aParams[3] ", " aParams[4]
+				OutputDebug, % "[" A_ThisFunc " : " this._hwnd "] Instantiating Class... : " aParams[1] ", " aParams[2] ", " aParams[3] ", " aParams[4]
 			}
-			return new this.CGuiControl(this, aParams[2], aParams[3], aParams[4])
+			r := new this.CGuiControl(this, aParams[2], aParams[3], aParams[4])
+			if (debug && _CGui_Global_Debug) {
+				OutputDebug, % "[" A_ThisFunc " : " this._hwnd "] GUI COMMAND ENDS - Got Hwnd: " r._hwnd
+				OutputDebug, % " "
+			}
+			return r
 		} else if (aParams[1] = "show") {
 			aParams[2] := this._SerializeOptions()
 			;OutputDebug, % "[" A_ThisFunc " : " this._hwnd "] Executing Gui Cmd (Default): " aParams[1] ", " aParams[2] ", " aParams[3] ", " aParams[4]
@@ -597,9 +601,10 @@ Class _CGui {
 				; Bind glabel event to _OnChange method
 				fn := bind(aParams[2]._OnChange,aParams[2])
 				if (debug && _CGui_Global_Debug) {
-					OutputDebug, % "[" A_ThisFunc " : " this._hwnd "] Binding GuiControl " aParams[2]._hwnd
+					OutputDebug, % "[" A_ThisFunc " : " this._hwnd "] Binding GuiControl " aParams[2]._hwnd ", " aParams[2]._type
+					OutputDebug, % " "
 				}
-				; Guicontrol called #3
+				; Guicontrol called #2
 				GuiControl % aParams[1], % aParams[2]._hwnd, % fn
 				return this
 			}
@@ -607,7 +612,7 @@ Class _CGui {
 			if (debug && _CGui_Global_Debug) {
 				OutputDebug, % "[" A_ThisFunc " : " this._hwnd "] Executing GuiControl " aParams[2]._hwnd
 			}
-			; guicontrol called #4
+			; guicontrol called #3
 			GuiControl, % aParams[1], % aParams[2]._hwnd, % aParams[3]
 			return this
 		}
