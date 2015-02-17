@@ -4,6 +4,7 @@
 ; Author: evilC@evilC.com
 ; Scrolling code by Just Me.
 
+global _CGui_Global_Debug := 1
 ; Gui Controls
 ;Class _CGuiControl extends _CGui {
 Class _CGuiControl extends _CScrollGui {
@@ -12,11 +13,17 @@ Class _CGuiControl extends _CScrollGui {
 	; equivalent to Gui, Add, <params>
 	; Pass parent as param 1
 	__New(aParams*){
+		static debug := 1
 		aParams.Remove
 		this._parent := aParams[1]
 		this._type := aParams[2]
 		; Must use base gui commands here, as this.Gui("Add",...) points here!
 		Gui, % this._parent._hwnd ":Add", % aParams[2], % "hwndhwnd " aParams[3], % aParams[4]
+		; hwnd being set #1
+		if (debug && _CGui_Global_Debug) {
+			OutputDebug, % "[" A_ThisFunc " : " this._hwnd "] GuiControl " aParams[2] " CONSTRUCTOR Setting Hwnd to : " hwnd
+			OutputDebug, % " "
+		}
 		this._hwnd := hwnd
 		return this
 	}
@@ -91,13 +98,13 @@ class _CScrollGui extends _CGui {
 		
 		WindowRECT := this._GetClientRect()
 		if (WindowRECT.Right != this._width || WindowRECT.Bottom != this._height){
-			if (debug) {
+			if (debug && _CGui_Global_Debug) {
 				OutputDebug, % "[" A_ThisFunc " : " this._hwnd "] Adjusting Scrollbars Due to window size change from (w,h) -> (w,h): " this._width "," this._width " -> " this._SerializeWH(WindowRECT)
 			}
 			this._width := WindowRECT.Right
 			this._height := WindowRECT.Bottom
 		} else {
-			if (debug) {
+			if (debug && _CGui_Global_Debug) {
 				OutputDebug, % "[" A_ThisFunc " : " this._hwnd "] Aborting as WindowRECT has not changed - " this._SerializeWH(WindowRECT)
 			}
 			return
@@ -138,12 +145,12 @@ class _CScrollGui extends _CGui {
 				}
 			}
 			if (DragVert || DragHoriz){
-				if (debug) {
+				if (debug && _CGui_Global_Debug) {
 					OutputDebug, % "[" A_ThisFunc " : " this._hwnd "] Dragging Window as we size up (x,y): " DragHoriz "," DragVert
 				}
 				this._ScrollWindow(DragHoriz, DragVert)
 			} else {
-				if (debug) {
+				if (debug && _CGui_Global_Debug) {
 					OutputDebug, % "[" A_ThisFunc " : " this._hwnd "] No Window Dragging Required."
 				}
 			}
@@ -161,7 +168,7 @@ class _CScrollGui extends _CGui {
 			hwnd := this._hwnd
 		} else if (this._hwnd != hwnd){
 			; Message not for this window
-			if (debug) {
+			if (debug && _CGui_Global_Debug) {
 				OutputDebug, % "[" A_ThisFunc " : " this._hwnd "] Aborting as message is not for this window: " this._SerializeWH(WindowRECT) " / " this._SerializeWH(CanvasRECT)
 			}		
 			return
@@ -172,12 +179,12 @@ class _CScrollGui extends _CGui {
 		; Use _Scroll_Width not _Width, as that that indicates the last size of WindowRECT that this function saw
 		if (this._Scroll_Width == WindowRECT.Right && this._Scroll_Height == WindowRECT.Bottom && this._Client_Width == CanvasRECT.Right && this._Client_Height == CanvasRECT.Bottom){
 			; Client Size did not change
-			if (debug) {
+			if (debug && _CGui_Global_Debug) {
 				OutputDebug, % "[" A_ThisFunc " : " this._hwnd "] Aborting as WindowRECT and CanvasRECT have not changed: " this._SerializeWH(WindowRECT) " / " this._SerializeWH(CanvasRECT)
 			}
 			return
 		}
-		if (debug) {
+		if (debug && _CGui_Global_Debug) {
 			OutputDebug, % "[" A_ThisFunc " : " this._hwnd "] Adjusting scrollbars"
 		}
 		this._Client_Width := CanvasRECT.Right
@@ -449,9 +456,13 @@ Class _CGui {
 	; put parent as param 1
 	__New(parent := 0, Param2 := "", Param3 := "", Param4 := ""){
 		static WM_MOUSEWHEEL := 0x020A, WM_MOUSEHWHEEL := 0x020E
+		static debug := 0
 		
 		this._parent := parent
 		if (this._parent = 0){
+			if (debug && _CGui_Global_Debug) {
+				OutputDebug, % "[" A_ThisFunc " : " this._hwnd "] ROOT Constructor Fired"
+			}
 			; Root Instance.
 			; Store a lookup table of HWND to CGui object on the Class definition.
 			; Not sure if this is a good place to store it or not...
@@ -461,6 +472,8 @@ Class _CGui {
 			; Therefore, one handler should perform the calculations once to determine which HWND should get the wheel input, if any.
 			fn := bind(this._WheelHandler, this)
 			OnMessage(WM_MOUSEWHEEL, fn, 999)
+		} else if (debug && _CGui_Global_Debug) {
+			OutputDebug, % "[" A_ThisFunc " : " this._hwnd "] Creating new Gui Class: " aParams[1] ", " aParams[2] ", " aParams[3] ", " aParams[4]
 		}
 		this.Gui("new", Param2, Param3, Param4)
 		return this
@@ -501,9 +514,9 @@ Class _CGui {
 	}
 	
 	Gui(aParams*){
-		static debug := 0
-		if (debug){
-			OutputDebug, % "[" A_ThisFunc " : " this._hwnd "] PROCESSING COMMAND: " aParams[1] ", " aParams[2] ", " aParams[3] ", " aParams[4]
+		static debug := 1
+		if (debug && _CGui_Global_Debug) {
+			OutputDebug, % "[" A_ThisFunc " : " this._hwnd "] PROCESSING GUI COMMAND: " aParams[1] ", " aParams[2] ", " aParams[3] ", " aParams[4]
 		}
 		; Store Guis option object
 		if (aParams[1] = "add"){
@@ -522,6 +535,11 @@ Class _CGui {
 			aParams[1] := this._SerializeOptions()
 			;OutputDebug, % "[" A_ThisFunc " : " this._hwnd "] Executing Gui Cmd (New): " aParams[1] ", " aParams[2] ", " aParams[3] ", " aParams[4]
 			Gui, new, % "hwndhwnd " aParams[1], % aParams[3], % aParams[4]
+			; hwnd being set #2
+			if (debug && _CGui_Global_Debug) {
+				OutputDebug, % "[" A_ThisFunc " : " this._hwnd "] Gui COMMAND Setting Hwnd to " hwnd
+			}
+
 			this._hwnd := hwnd
 			_CGui._HwndLookup[hwnd] := this
 		} else if (aParams[1] = "add") {
@@ -531,9 +549,8 @@ Class _CGui {
 				return
 			}
 			aParams[3] := this._SerializeOptions()
-			if (debug) {
+			if (debug && _CGui_Global_Debug) {
 				OutputDebug, % "[" A_ThisFunc " : " this._hwnd "] GUI COMMAND ENDS: " aParams[1] ", " aParams[2] ", " aParams[3] ", " aParams[4]
-				OutputDebug, % " "
 			}
 			return new this.CGuiControl(this, aParams[2], aParams[3], aParams[4])
 		} else if (aParams[1] = "show") {
@@ -545,7 +562,7 @@ Class _CGui {
 			;OutputDebug, % "[" A_ThisFunc " : " this._hwnd "] Executing Gui Cmd (Default): " aParams[1] ", " aParams[2] ", " aParams[3] ", " aParams[4]
 			Gui, % this._hwnd ":" aParams[1], % aParams[2], % aParams[3], % aParams[4]
 		}
-		if (debug){
+		if (debug && _CGui_Global_Debug) {
 			OutputDebug, % "[" A_ThisFunc " : " this._hwnd "] GUI COMMAND ENDS"
 			OutputDebug, % " "
 		}
@@ -573,14 +590,14 @@ Class _CGui {
 				aParams[2]._glabel := fn
 				; Bind glabel event to _OnChange method
 				fn := bind(aParams[2]._OnChange,aParams[2])
-				if (debug){
+				if (debug && _CGui_Global_Debug) {
 					OutputDebug, % "[" A_ThisFunc " : " this._hwnd "] Binding GuiControl " aParams[2]._hwnd
 				}
 				GuiControl % aParams[1], % aParams[2]._hwnd, % fn
 				return this
 			}
 		} else {
-			if (debug){
+			if (debug && _CGui_Global_Debug) {
 				OutputDebug, % "[" A_ThisFunc " : " this._hwnd "] Executing GuiControl " aParams[2]._hwnd
 			}
 			GuiControl, % aParams[1], % aParams[2]._hwnd, % aParams[3]
@@ -605,14 +622,14 @@ Class _CGui {
 		static xywh_types := {x: 1, y: 1, w: 1, h: 1}
 		static xywh_lookup := {x: "_Width", y: "_Height", w: "_Width", h: "_Height"}
 		static wh_types := {w: 1, h: 1}
-		if (debug) {
+		if (debug && _CGui_Global_Debug) {
 			OutputDebug, % "[" A_ThisFunc " : " this._hwnd "] Processing options: " options
 		}
 		ret := { flags: {}, options: {}, signs: {} }
 		opts := StrSplit(options, A_Space)
 		Loop % opts.MaxIndex() {
 			opt := opts[A_Index]
-			if (debug) {
+			if (debug && _CGui_Global_Debug) {
 				OutputDebug, % "[" A_ThisFunc " : " this._hwnd "] Processing option: " opt
 			}
 			; Strip +/- prefix if it exists
@@ -684,7 +701,7 @@ Class _CGui {
 			options .= opts.signs[key] key value
 			Count++
 		}
-		if (debug){
+		if (debug && _CGui_Global_Debug) {
 			OutputDebug, % "[" A_ThisFunc " : " this._hwnd "] Returning: " options
 			;OutputDebug, % " "
 		}
