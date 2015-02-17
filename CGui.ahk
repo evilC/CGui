@@ -203,12 +203,12 @@ class _CScrollGui extends _CGui {
 		lpsi.fMask := SIF_ALL
 		
 		lpsi.nMin := 0
-		lpsi.nMax := CanvasRECT.Bottom
-		lpsi.nPage := WindowRECT.Bottom
+		lpsi.nMax := this._Client_Height
+		lpsi.nPage := this._Scroll_Height
 		this._SetScrollInfo(SB_VERT, lpsi)
 		
-		lpsi.nMax := CanvasRECT.Right
-		lpsi.nPage := WindowRECT.Right
+		lpsi.nMax := this._Client_Width
+		lpsi.nPage := this._Scroll_Width
 		this._SetScrollInfo(SB_HORZ, lpsi)
 	}
 
