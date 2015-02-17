@@ -86,7 +86,7 @@ class _CScrollGui extends _CGui {
 		static SIF_PAGE := 0x2
 		
 		; obj vars used:
-		; this._width, this._height: GET / SET, Used By: _ScrollBarGuiSized(GET)  - SEEMS LEGIT
+		; this._width, this._height: GET / SET, Used By: _SetSScrollbarPage(GET)  - SEEMS LEGIT
 		
 		; Ignore message if it is not for this window
 		if (hwnd = 0){
@@ -115,7 +115,7 @@ class _CScrollGui extends _CGui {
 			OutputDebug, % "[ " this._FormatHwnd() " ] " this._FormatFuncName(A_ThisFunc) "   - Window changed size to (w,h): " this._SerializeWH(WindowRECT)
 		}
 
-		this._ScrollBarGuiSized()
+		this._SetSScrollbarPage()
 	}
 
 	; The contents of a Gui changed size (eg Controls were added to a Gui
@@ -123,8 +123,8 @@ class _CScrollGui extends _CGui {
 		static debug := 0
 		
 		; obj vars used:
-		; this._Scroll_Width, this._Scroll_Height - GET / SET - Used in _ScrollBarClientSized (GET), _ScrollBarGuiSized (GET/SET), 
-		; this._Client_Width, this._Client_Height - GET / SET - Used in _ScrollBarClientSized (GET)
+		; this._Scroll_Width, this._Scroll_Height - GET / SET - Used in _SetScrollbarRange (GET), _SetSScrollbarPage (GET/SET), 
+		; this._Client_Width, this._Client_Height - GET / SET - Used in _SetScrollbarRange (GET)
 		; this._LineH, this._LineV - SET, Used in _Scroll (GET)
 		
 		; Determine if this message is for us
@@ -161,12 +161,12 @@ class _CScrollGui extends _CGui {
 		
 		this._LineH := Ceil(WindowRECT.Right / 20)
 		this._LineV := Ceil(WindowRECT.Bottom / 20)
-		this._ScrollBarClientSized()
+		this._SetScrollbarRange()
 	}
 	
 	; Adjust scrollbars due to change in client height.
-	; Try and merge / share code with _ScrollBarGuiSized
-	_ScrollBarClientSized(){
+	; Try and merge / share code with _SetSScrollbarPage
+	_SetScrollbarRange(){
 		static debug := 1
 		
 		; obj vars used
@@ -198,8 +198,8 @@ class _CScrollGui extends _CGui {
 	; this._Scroll_Width / Height is a WindowRECT - same as _width?
 
 	; Update scrollbars due to window resize and drag if needed
-	; Try and merge / share code with _ScrollBarClientSized
-	_ScrollBarGuiSized(){
+	; Try and merge / share code with _SetScrollbarRange
+	_SetSScrollbarPage(){
 		static debug := 1
 		Static SB_HORZ := 0, SB_VERT = 1
 		static SIF_PAGE := 0x2
