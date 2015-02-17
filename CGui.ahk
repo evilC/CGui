@@ -18,6 +18,7 @@ Class _CGuiControl extends _CScrollGui {
 		; Must use base gui commands here, as this.Gui("Add",...) points here!
 		Gui, % this._parent._hwnd ":Add", % aParams[2], % "hwndhwnd " aParams[3], % aParams[4]
 		this._hwnd := hwnd
+		return this
 	}
 	
 	__Get(aParam){
@@ -61,7 +62,7 @@ class _CScrollGui extends _CGui {
 		this._Scroll_V := 1
 		this._Scroll_UseShift := False
 
-		this.AdjustToChild()
+		this._parent.AdjustToChild()
 		
 		fn := bind(this._ScrollHandler, this)
 		this.OnMessage(WM_VSCROLL, fn)
@@ -69,12 +70,19 @@ class _CScrollGui extends _CGui {
 		
 		fn := bind(this.AdjustToParent, this)
 		this.OnMessage(WM_SIZE, fn, 999)
-		fn := bind(this.AdjustToChild, this)
-		this.OnMessage(WM_SIZE, fn, 999)
+		return this
+	}
+	
+	Gui(aParams*){
+		; Whenever a gui command runs, adjust the scrollbars
+		base.Gui(aParams*)
+		this.AdjustToChild()
+		return this
 	}
 	
 	; AKA Window resized - If scrollbar(s) all the way at the end and you size up, child needs to be scrolled in the direction of the size up.
 	AdjustToParent(WParam:= 0, lParam := 0, Msg := 0, hwnd := 0){
+		Critical
 		static debug := 1
 		Static SB_HORZ := 0, SB_VERT = 1
 		static SIF_PAGE := 0x2
@@ -150,6 +158,7 @@ class _CScrollGui extends _CGui {
 	
 	; Normal resize routine - Just adjust the scrollbars.
 	AdjustToChild(WParam := 0, lParam := 0, msg := 0, hwnd := 0){
+		Critical
 		static debug := 1
 		Static SB_HORZ := 0, SB_VERT = 1
 		static SIF_ALL := 0x17
@@ -247,6 +256,7 @@ class _CScrollGui extends _CGui {
 
 	; Returns a RECT encompassing all GuiControls and GUIs that are a child of this GUI
 	_GetClientSize(){
+		Critical
 		DHW := A_DetectHiddenWindows
 		DetectHiddenWindows, On
 		
@@ -320,6 +330,7 @@ class _CScrollGui extends _CGui {
 	}
 	
 	_Scroll(WP, LP, Msg, HWND := 0) {
+		Critical
 		;ToolTip, % "wp: " WP ", lp: " LP ", msg: " msg ", h: " hwnd
 		Static SB_LINEMINUS := 0, SB_LINEPLUS := 1, SB_PAGEMINUS := 2, SB_PAGEPLUS := 3, SB_THUMBTRACK := 5
 		Static WM_HSCROLL := 0x0114, WM_VSCROLL := 0x0115
@@ -459,6 +470,7 @@ Class _CGui {
 			OnMessage(WM_MOUSEWHEEL, fn, 999)
 		}
 		this.Gui("new", Param2, Param3, Param4)
+		return this
 	}
 	
 	__Delete() {
@@ -544,6 +556,7 @@ Class _CGui {
 			OutputDebug, % "[" A_ThisFunc " : " this._hwnd "] GUI COMMAND ENDS"
 			OutputDebug, % " "
 		}
+		return this
 	}
 	
 	; The same as Gui, +Option - but lets you pass objects instead of hwnds
