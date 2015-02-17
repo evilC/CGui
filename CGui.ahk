@@ -161,6 +161,8 @@ class _CScrollGui extends _CGui {
 	; Adjust scrollbars due to change in client height.
 	; Try and merge / share code with _ScrollBarGuiSized
 	_ScrollBarClientSized(){
+		static debug := 1
+		
 		Static SB_HORZ := 0, SB_VERT = 1
 		static SIF_ALL := 0x17
 		; Perform Scroll if needed
@@ -175,6 +177,10 @@ class _CScrollGui extends _CGui {
 		lpsi.nMax := this._Client_Width
 		lpsi.nPage := this._Scroll_Width
 		this._SetScrollInfo(SB_HORZ, lpsi)
+		
+		if (debug) {
+			OutputDebug, % "[ " this._FormatHwnd() " ] " this._FormatFuncName(A_ThisFunc) "   - CLIENT SIZED - Window / Client size (w,h): " this._Scroll_Width "," this._Scroll_Height "  /  " this._Client_Width "," this._Client_Height
+		}
 	}
 
 	; Update scrollbars due to window resize and drag if needed
@@ -205,10 +211,10 @@ class _CScrollGui extends _CGui {
 					; Get new scroll info
 					This._GetScrollInfo(SB_HORZ, SI)
 					
-					; Set drag amounr
+					; Set drag amount
 					DragH := This._Scroll_PosH - SI.nPos
 					
-					; Update scroll bar pos amount
+					; Update scroll bar pos var
 					This._Scroll_PosH := SI.nPos
 				}
 			}
