@@ -37,7 +37,6 @@ class _CGui extends _CGuiBase {
  
 	; The RANGE (Size of contents) of a GUI / GuiControl changed (Most GuiControls would not have a Range, just a page)
 	_GuiRangeChanged(){
-		this._RangeRECT := this._GuiRangeGetRect()
 		SoundBeep
 	}
 	
@@ -47,61 +46,6 @@ class _CGui extends _CGuiBase {
 		DllCall("User32.dll\GetClientRect", "Ptr", This._hwnd, "Ptr", RECTClass[])
 		ToolTip % "Page Width :" RECTClass.Right ", Height: " RECTClass.Bottom
 		return RECTClass
-	}
-
-	; ToDo: Do not calculate client RECTs. Let the child classes calculate their own RECTs on an as-needed basis.
-	_GuiRangeGetRect(){
-		Critical
-		
-		DHW := A_DetectHiddenWindows
-		DetectHiddenWindows, On
-		
-		Width := Height := 0
-		hwnd := this._hwnd
-		L := T := R := B := LH := TH := ""
-		cmd := 5 ; GW_CHILD
-		While (hwnd := DllCall("GetWindow", "Ptr", hwnd, "UInt", cmd, "UPtr")) && (cmd := 2) {
-			WinGetPos, X, Y, W, H, % "ahk_id " hwnd
-			W += X, H += Y
-			WinGet, Styles, Style, % "ahk_id " hwnd
-			If (Styles & 0x10000000) { ; WS_VISIBLE
-			If (L = "") || (X < L)
-				L := X
-			If (T = "") || (Y < T)
-				T := Y
-			If (R = "") || (W > R)
-				R := W
-			If (B = "") || (H > B)
-				B := H
-		}
-		Else {
-			If (LH = "") || (X < LH)
-			LH := X
-			If (TH = "") || (Y < TH)
-				TH := Y
-			}
-		}
-		DetectHiddenWindows, % DHW
-		If (LH <> "") {
-			POINT := new _Struct(WinStructs.POINT)
-			POINT.x := LH
-			DllCall("ScreenToClient", "Ptr", this._hwnd, "Ptr", POINT[])
-			LH := POINT.x
-		}
-		If (TH <> "") {
-			POINT := new _Struct(WinStructs.POINT)
-			POINT.y := TH
-			DllCall("ScreenToClient", "Ptr", this._hwnd, "Ptr", POINT[])
-			TH := POINT.y
-		}
-		RECT := new _Struct(WinStructs.RECT)
-		RECT.Left := L
-		RECT.Right := R
-		RECT.Top := T
-		RECT.Bottom := B
-		DllCall("MapWindowPoints", "Ptr", 0, "Ptr", this._hwnd, "Ptr", RECT[], "UInt", 2)
-		
-		return new this.RECT({Right: RECT.Right + (LH <> "" ? LH : RECT.Left), Bottom: RECT.Bottom + (TH <> "" ? TH : RECT.Top)})
 	}
 	
 	Gui(cmd, aParams*){
@@ -113,6 +57,8 @@ class _CGui extends _CGuiBase {
 		}
 	}
 
+	; ==================================== CLASSES ===============================================================
+	
 	class _CGuiControl extends _CGuiBase {
 		__New(parent, ctrltype, options := "", text := ""){
 			this._parent := parent
@@ -121,6 +67,7 @@ class _CGui extends _CGuiBase {
 			GuiControlGet, Pos, % this._parent._hwnd ":Pos", % this._hwnd
 			this._PageRECT := new this.RECT({Top: PosY, Left: PosX, Bottom: PosY + PosH, Right: PosX + PosW})
 			if (!this._parent._PageRECT.contains(this._PageRECT)){
+				this._parent._PageRECT := this._parent._PageRECT.Union(this._PageRECT)
 				this._parent._GuiRangeChanged()
 			}
 		}
@@ -135,25 +82,6 @@ class _CGui extends _CGuiBase {
 	Guicmd(cmd){
 		return this._hwnd ":" cmd
 	}
-
-	/*
-	ToObj(){
-		return {Top: this.RECT.Top, Bottom: this.RECT.Bottom, Left: this.RECT.Left, Right: this.RECT.Right}
-	}
-	
-	ToObj(struct){
-	  obj:=[]
-	  for k,v in struct
-	  {
-		if (Asc(k)=10){
-		  If IsObject(_Value_:=struct[_TYPE_:=SubStr(k,2)])
-			obj[_TYPE_]:=ToObj(_Value_)
-		  else obj[_TYPE_]:=_Value_
-		}
-	  }
-	  return obj
-	}
-	*/
 }
 
 class _CGuiBase {
@@ -217,4 +145,23 @@ class _CGuiBase {
 			return Expanded
 		}
 	}
+	
+	/*
+	ToObj(){
+		return {Top: this.RECT.Top, Bottom: this.RECT.Bottom, Left: this.RECT.Left, Right: this.RECT.Right}
+	}
+	
+	ToObj(struct){
+	  obj:=[]
+	  for k,v in struct
+	  {
+		if (Asc(k)=10){
+		  If IsObject(_Value_:=struct[_TYPE_:=SubStr(k,2)])
+			obj[_TYPE_]:=ToObj(_Value_)
+		  else obj[_TYPE_]:=_Value_
+		}
+	  }
+	  return obj
+	}
+	*/
 }
