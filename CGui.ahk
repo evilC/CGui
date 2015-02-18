@@ -47,7 +47,6 @@ class _CGui extends _CGuiBase {
 	; The PAGE (Size of window) of a Gui / GuiControl changed. For GuiControls, this is the size of the control
 	_GuiPageGetRect(){
 		RECT := new this.RECT()
-		MsgBox GETCLIENTRECT CALLED
 		DllCall("User32.dll\GetClientRect", "Ptr", This._hwnd, "Ptr", RECT[])
 		ToolTip % "Page Width :" RECT.Right ", Height: " RECT.Bottom
 		return RECT
