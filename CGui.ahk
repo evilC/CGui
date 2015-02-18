@@ -33,6 +33,7 @@ class _CGui {
 		ToolTip % "Width :" this._PageRECT.Bottom ", Height: " _PageRECT.Right
 	}
  
+	; The RANGE (Size of contents) of a GUI / GuiControl changed (Most GuiControls would not have a Range, just a page)
 	_GuiRangeChanged(){
 		RangeRECT := this._GuiRangeGetRect()
 		if (!this._RangeRECT.Contains(RangeRECT)){
@@ -46,13 +47,14 @@ class _CGui {
 		}
 	}
 	
+	; The PAGE (Size of window) of a Gui / GuiControl changed. For GuiControls, this is the size of the control
 	_GuiPageGetRect(){
 		RECTClass := new this.RECT()
 		DllCall("User32.dll\GetClientRect", "Ptr", This._hwnd, "Ptr", RECTClass[])
 		return RECTClass
 	}
 
-	; ToDo: Simplify with RECTs.
+	; ToDo: Do not calculate client RECTs. Let the child classes calculate their own RECTs on an as-needed basis.
 	_GuiRangeGetRect(){
 		Critical
 		
@@ -103,14 +105,8 @@ class _CGui {
 		RECT.Top := T
 		RECT.Bottom := B
 		DllCall("MapWindowPoints", "Ptr", 0, "Ptr", this._hwnd, "Ptr", RECT[], "UInt", 2)
-		Width := RECT.Right + (LH <> "" ? LH : RECT.Left)
-		Height := RECT.Bottom + (TH <> "" ? TH : RECT.Top)
-
-		;ret := new _Struct(WinStructs.RECT)
-		ret := new this.RECT()
-		ret.Right := Width
-		ret.Bottom := Height
-		return ret
+		
+		return new this.RECT({Right: RECT.Right + (LH <> "" ? LH : RECT.Left), Bottom: RECT.Bottom + (TH <> "" ? TH : RECT.Top)})
 	}
 	
 	Gui(cmd, aParams*){
@@ -146,12 +142,12 @@ class _CGui {
 		}
 		
 		__Set(aParam = "", aValue := ""){
-			if (aParam = ""){
-				; Blank param passed via [""] - set RECT Structure
-				;return this.RECT
-				this.RECT := aValue
-			}
 			static keys := {Top: 1, Left: 1, Bottom: 1, Right: 1}
+			
+			if (aParam = ""){
+				; Blank param passed via [""] - pass back RECT Structure
+				return this.RECT
+			}
 			if (ObjHasKey(keys, aParam)){
 				this.RECT[aParam] := aValue
 			}
@@ -159,10 +155,7 @@ class _CGui {
 		
 		; Does this RECT contain the passed rect ?
 		Contains(RECT){
-			c := (this.RECT.Bottom >= RECT.Bottom && this.RECT.Right >= RECT.Right)
-			b1 := this.RECT.Bottom
-			b2 := RECT.Bottom
-			return c
+			return (this.RECT.Bottom >= RECT.Bottom && this.RECT.Right >= RECT.Right)
 		}
 		
 		; Is this RECT equal to the passed RECT?
