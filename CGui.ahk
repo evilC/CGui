@@ -27,9 +27,11 @@ class _CGui extends _CGuiBase {
 		
 		Gui, new, % "hwndhwnd " options
 		this._hwnd := hwnd
-		;this._PageRECT := this._GuiPageGetRect()
-		; Set Range to size of Page for now.
+		
+		; Set Range to size of Page to start off with.
 		this._RangeRECT := this._GuiPageGetRect()
+		
+		; Register for ReSize messages
 		this._RegisterMessage(WM_SIZE,this._OnSize)
 	}
 
@@ -41,7 +43,6 @@ class _CGui extends _CGuiBase {
 	
 	Show(options){
 		Gui, % this._hwnd ":Show", % options
-		;this._PageRECT := this._GuiPageGetRect()
 	}
  
 	; Wrapper for Gui commands
@@ -107,37 +108,35 @@ class _CGui extends _CGuiBase {
 		}
 		
 		; Alter scroll bars due to client size
-		Hlpsi := this._BlankScrollInfo()
-		Hlpsi.fMask := mask
-		if (bar){
-			Vlpsi := this._BlankScrollInfo()
-			Vlpsi.fMask := mask
-		}
 		
 		; Process Horizontal bar
 		if (bar = 0 || bar = 2){
+			ScrollInfoH := this._BlankScrollInfo()
+			ScrollInfoH.fMask := mask
 			if (mask & SIF_RANGE){
-				Hlpsi.nMin := RangeRECT.Left
-				Hlpsi.nMax := RangeRECT.Right
+				ScrollInfoH.nMin := RangeRECT.Left
+				ScrollInfoH.nMax := RangeRECT.Right
 			}
 			
 			if (mask & SIF_PAGE){
-				Hlpsi.nPage := PageRECT.Right
+				ScrollInfoH.nPage := PageRECT.Right
 			}
-			this._DLL_SetScrollInfo(SB_HORZ, Hlpsi)
+			this._DLL_SetScrollInfo(SB_HORZ, ScrollInfoH)
 		}
 		
 		; Process Vertical bar
 		if (bar > 0){
+			ScrollInfoV := this._BlankScrollInfo()
+			ScrollInfoV.fMask := mask
 			if (mask & SIF_RANGE){
-				Vlpsi.nMin := RangeRECT.Top
-				Vlpsi.nMax := RangeRECT.Bottom
+				ScrollInfoV.nMin := RangeRECT.Top
+				ScrollInfoV.nMax := RangeRECT.Bottom
 			}
 			
 			if (mask & SIF_PAGE){
-				Vlpsi.nPage := PageRECT.Bottom
+				ScrollInfoV.nPage := PageRECT.Bottom
 			}
-			this._DLL_SetScrollInfo(SB_VERT, Vlpsi)
+			this._DLL_SetScrollInfo(SB_VERT, ScrollInfoV)
 		}
 		
 	}
@@ -174,23 +173,38 @@ class _CGui extends _CGuiBase {
 	}
 
 	; ========================================== MESSAGES =========================================
+	
+	; All messages route through here. Only one message of each kind will be registered, to avoid noise and make debugging easier.
 	_MessageHandler(wParam, lParam, msg, hwnd){
-		
+		; Call the callback associated with this Message and HWND
+		(_CGui._MessageArray[msg][hwnd]).(wParam, lParam, msg, hwnd)
 	}
 	
+	; Register a message with the Message handler.
 	_RegisterMessage(msg, callback){
+		newmessage := 0
 		if (!IsObject(_CGui._MessageArray)){
 			_Cgui._MessageArray := {}
 		}
 		if (!IsObject(_Gui._MessageArray[msg])){
-			_Gui._MessageArray[msg] := {}
+			_CGui._MessageArray[msg] := {}
+			newmessage := 1
 		}
+		
+		; Add the callback to _MessageArray, so that _MessageHandler can look it up and route to it.
+		; Store Array on _CGui, so any class can call it's own .RegisterMessage property.
 		fn := Bind(callback, this)
-		_Gui._MessageArray[msg][this._hwnd] := fn
-		OnMessage(msg, fn)
+		_CGui._MessageArray[msg][this._hwnd] := fn
+		
+		; Only subscribe to message if this message has not already been subscribed to.
+		if (newmessage){
+			fn := bind(this._MessageHandler, this)
+			OnMessage(msg, fn)
+		}
 	}
 	; ========================================== CLASSES ==========================================
 	
+	; Wraps GuiControls into an Object
 	class _CGuiControl extends _CGuiBase {
 		__New(parent, ctrltype, options := "", text := ""){
 			this._parent := parent
@@ -211,11 +225,13 @@ class _CGui extends _CGuiBase {
 		}
 	}
 
+	; Simple patch to prefix Gui commands with HWND
 	Guicmd(cmd){
 		return this._hwnd ":" cmd
 	}
 }
 
+; A base class, purely for inheriting.
 class _CGuiBase {
 	; ========================================== CLASSES ==========================================
 	
@@ -285,25 +301,6 @@ class _CGuiBase {
 			return Expanded
 		}
 	}
-	
-	/*
-	ToObj(){
-		return {Top: this.RECT.Top, Bottom: this.RECT.Bottom, Left: this.RECT.Left, Right: this.RECT.Right}
-	}
-	
-	ToObj(struct){
-	  obj:=[]
-	  for k,v in struct
-	  {
-		if (Asc(k)=10){
-		  If IsObject(_Value_:=struct[_TYPE_:=SubStr(k,2)])
-			obj[_TYPE_]:=ToObj(_Value_)
-		  else obj[_TYPE_]:=_Value_
-		}
-	  }
-	  return obj
-	}
-	*/
 }
 
 ; Functions that will be part of AHK at some point ================================================================================================
