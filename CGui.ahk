@@ -9,7 +9,7 @@ main.Show("w200 h200")
 main._GuiRangeChanged()
 
 Loop 20 {
-	Gui, Add, Text,,Hello World
+	main.Gui("Add", "Text",,"Hello World")
 }
 
 main._GuiRangeChanged()
@@ -31,16 +31,12 @@ class _CGui {
 		Gui, % this._hwnd ":Show", % options
 	}
 	
-	Guicmd(cmd){
-		return this.hwnd ":" cmd
-	}
-	
 	_GuiRangeChanged(){
 		RangeRECT := this._GuiRangeGetRect()
 		if (!this._RangeRECT.contains(RangeRECT)){
 			; Range Grew
 			this._RangeRECT := this._GuiRangeGetRect()
-			MsgBox GREW
+			SoundBeep
 		}
 	}
 	
@@ -50,6 +46,7 @@ class _CGui {
 		return lpRect
 	}
 
+	; ToDo: Simplify with RECTs.
 	_GuiRangeGetRect(){
 		Critical
 		
@@ -109,6 +106,17 @@ class _CGui {
 		return ret
 	}
 	
+	Gui(aParams*){
+		if (aParams[1] = "add"){
+			aParams.Remove(1)
+			return this._GuiAdd(aParams*)
+		}
+	}
+	
+	_GuiAdd(ctrltype, options := "", text := ""){
+		Gui, % this.Guicmd("Add"), % ctrltype, % options, % text
+	}
+
 	; RECT class. Wraps _Struct to provide functionality similar to C
 	; https://msdn.microsoft.com/en-us/library/system.windows.rect(v=vs.110).aspx
 	class RECT {
@@ -155,4 +163,9 @@ class _CGui {
 			return Expanded
 		}
 	}
+	
+	Guicmd(cmd){
+		return this._hwnd ":" cmd
+	}
+
 }
