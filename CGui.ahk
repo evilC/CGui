@@ -23,11 +23,14 @@ GuiClose:
 class _CGui extends _CGuiBase {
 	; ========================================== GUI COMMAND WRAPPERS =============================
 	__New(options := 0){
+		static WM_SIZE := 0x0005
+		
 		Gui, new, % "hwndhwnd " options
 		this._hwnd := hwnd
-		this._PageRECT := this._GuiPageGetRect()
+		;this._PageRECT := this._GuiPageGetRect()
 		; Set Range to size of Page for now.
 		this._RangeRECT := this._GuiPageGetRect()
+		this._RegisterMessage(WM_SIZE,this._OnSize)
 	}
 
 	__Destroy(){
@@ -38,7 +41,7 @@ class _CGui extends _CGuiBase {
 	
 	Show(options){
 		Gui, % this._hwnd ":Show", % options
-		this._PageRECT := this._GuiPageGetRect()
+		;this._PageRECT := this._GuiPageGetRect()
 	}
  
 	; Wrapper for Gui commands
@@ -65,14 +68,23 @@ class _CGui extends _CGuiBase {
 		RECT := this._DLL_GetClientRect()
 		return RECT
 	}
-	
+
+	; Adjust this._PageRECT when Gui Size Changes (ie it was Resized)
+	_OnSize(wParm, lParm, msg, hwnd){
+		; ToDo: Need to check if hwnd matches this._hwnd ?
+		this._PageRECT := this._GuiPageGetRect()
+		this._GuiSetScrollbarSize()
+	}
+
 	; ========================================== SCROLL BARS ======================================
 
-	_GuiSetScrollbarSize(PageRECT := 0, RangeRECT := 0, mode := "b"){
+	; Set the SIZE component(s) of a scrollbar - PAGE and RANGE
+	_GuiSetScrollbarSize(bar := 2, PageRECT := 0, RangeRECT := 0, mode := "b"){
 		Static SB_HORZ := 0, SB_VERT = 1
 		static SIF_DISABLENOSCROLL := 0x8
 		static SIF_RANGE := 0x1, SIF_PAGE := 0x2, SIF_POS := 0x4, SIF_ALL := 0x17
 		
+		; Determine what part of the scrollbars we wish to set.
 		if (mode = "p"){
 			; Set PAGE
 			mask := SIF_PAGE
@@ -80,12 +92,13 @@ class _CGui extends _CGuiBase {
 			; Set RANGE
 			mask := SIF_RANGE
 		} else {
-			; SET PAGE + RANGE
+			; Default to SET PAGE + RANGE
 			mask := SIF_PAGE | SIF_RANGE
 		}
 		;mask |= SIF_DISABLENOSCROLL	; If the scroll bar's new parameters make the scroll bar unnecessary, disable the scroll bar instead of removing it
 		;mask := SIF_ALL
-		
+
+		; If no RECTs passed, use class properties
 		if (PageRECT = 0){
 			PageRECT := this._PageRECT
 		}
@@ -94,32 +107,39 @@ class _CGui extends _CGuiBase {
 		}
 		
 		; Alter scroll bars due to client size
-		Vlpsi := this._BlankScrollInfo()
 		Hlpsi := this._BlankScrollInfo()
-		
-		Vlpsi.fMask := mask
 		Hlpsi.fMask := mask
+		if (bar){
+			Vlpsi := this._BlankScrollInfo()
+			Vlpsi.fMask := mask
+		}
 		
-		if (mask & SIF_RANGE){
-			Vlpsi.nMin := RangeRECT.Top
-			Vlpsi.nMax := RangeRECT.Bottom
+		; Process Horizontal bar
+		if (bar = 0 || bar = 2){
+			if (mask & SIF_RANGE){
+				Hlpsi.nMin := RangeRECT.Left
+				Hlpsi.nMax := RangeRECT.Right
+			}
 			
-			Hlpsi.nMin := RangeRECT.Left
-			Hlpsi.nMax := RangeRECT.Right
+			if (mask & SIF_PAGE){
+				Hlpsi.nPage := PageRECT.Right
+			}
+			this._DLL_SetScrollInfo(SB_HORZ, Hlpsi)
 		}
 		
-		if (mask & SIF_RANGE){
-			Vlpsi.nPage := PageRECT.Bottom
-			Hlpsi.nPage := PageRECT.Right
+		; Process Vertical bar
+		if (bar > 0){
+			if (mask & SIF_RANGE){
+				Vlpsi.nMin := RangeRECT.Top
+				Vlpsi.nMax := RangeRECT.Bottom
+			}
+			
+			if (mask & SIF_PAGE){
+				Vlpsi.nPage := PageRECT.Bottom
+			}
+			this._DLL_SetScrollInfo(SB_VERT, Vlpsi)
 		}
 		
-		;if (mask & SIF_POS){
-		;	Vlpsi.nPos := 0
-		;	Hlpsi.nPos := 0
-		;}
-
-		this._DLL_SetScrollInfo(SB_VERT, Vlpsi)
-		this._DLL_SetScrollInfo(SB_HORZ, Hlpsi)
 	}
 
 	; Sets cbSize, returns blank scrollinfo
@@ -153,6 +173,22 @@ class _CGui extends _CGuiBase {
 		return DllCall("User32.dll\SetScrollInfo", "Ptr", hwnd, "Int", fnBar, "Ptr", lpsi[], "UInt", fRedraw, "UInt")
 	}
 
+	; ========================================== MESSAGES =========================================
+	_MessageHandler(wParam, lParam, msg, hwnd){
+		
+	}
+	
+	_RegisterMessage(msg, callback){
+		if (!IsObject(_CGui._MessageArray)){
+			_Cgui._MessageArray := {}
+		}
+		if (!IsObject(_Gui._MessageArray[msg])){
+			_Gui._MessageArray[msg] := {}
+		}
+		fn := Bind(callback, this)
+		_Gui._MessageArray[msg][this._hwnd] := fn
+		OnMessage(msg, fn)
+	}
 	; ========================================== CLASSES ==========================================
 	
 	class _CGuiControl extends _CGuiBase {
@@ -268,4 +304,23 @@ class _CGuiBase {
 	  return obj
 	}
 	*/
+}
+
+; Functions that will be part of AHK at some point ================================================================================================
+bind(fn, args*) {  ; bind v1.2
+    try bound := fn.bind(args*)  ; Func.Bind() not yet implemented.
+    return bound ? bound : new BoundFunc(fn, args*)
+}
+
+class BoundFunc {
+    __New(fn, args*) {
+        this.fn := IsObject(fn) ? fn : Func(fn)
+        this.args := args
+    }
+    __Call(callee, args*) {
+        if (callee = "" || callee = "call" || IsObject(callee)) {  ; IsObject allows use as a method.
+            fn := this.fn, args.Insert(1, this.args*)
+            return %fn%(args*)
+        }
+    }
 }
