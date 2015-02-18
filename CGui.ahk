@@ -1,3 +1,7 @@
+; DEPENDENCIES:
+; _Struct():  https://raw.githubusercontent.com/HotKeyIt/_Struct/master/_Struct.ahk - docs: http://www.autohotkey.net/~HotKeyIt/AutoHotkey/_Struct.htm
+; sizeof(): https://raw.githubusercontent.com/HotKeyIt/_Struct/master/sizeof.ahk - docs: http://www.autohotkey.net/~HotKeyIt/AutoHotkey/sizeof.htm
+; WinStructs: https://github.com/ahkscript/WinStructs
 #SingleInstance force
 
 #include <_Struct>
@@ -42,10 +46,11 @@ class _CGui extends _CGuiBase {
 	
 	; The PAGE (Size of window) of a Gui / GuiControl changed. For GuiControls, this is the size of the control
 	_GuiPageGetRect(){
-		RECTClass := new this.RECT()
-		DllCall("User32.dll\GetClientRect", "Ptr", This._hwnd, "Ptr", RECTClass[])
-		ToolTip % "Page Width :" RECTClass.Right ", Height: " RECTClass.Bottom
-		return RECTClass
+		RECT := new this.RECT()
+		MsgBox GETCLIENTRECT CALLED
+		DllCall("User32.dll\GetClientRect", "Ptr", This._hwnd, "Ptr", RECT[])
+		ToolTip % "Page Width :" RECT.Right ", Height: " RECT.Bottom
+		return RECT
 	}
 	
 	Gui(cmd, aParams*){
