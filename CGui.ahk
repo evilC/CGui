@@ -24,6 +24,7 @@ class _CGui extends _CGuiBase {
 	__New(options := 0){
 		Gui, new, % "hwndhwnd " options
 		this._hwnd := hwnd
+		; ToDo - set Page and Range to _GuiPageGetRect() - initialize with saner values, not 0!
 		this._PageRECT := new this.RECT()
 		this._RangeRECT := new this.RECT()
 	}
@@ -42,13 +43,46 @@ class _CGui extends _CGuiBase {
 	; The RANGE (Size of contents) of a GUI / GuiControl changed (Most GuiControls would not have a Range, just a page)
 	_GuiRangeChanged(){
 		SoundBeep
+		this._GuiSetScrollbar()
+	}
+	
+	_GuiSetScrollbar(PageRECT := 0, RangeRECT := 0, mask := 0x3){
+		Static SB_HORZ := 0, SB_VERT = 1
+		static SIF_DISABLENOSCROLL := 0x8
+		static SIF_RANGE := 0x1, SIF_PAGE := 0x2, SIF_POS := 0x4, SIF_ALL := 0x17
+		
+		;mask |= SIF_DISABLENOSCROLL	; If the scroll bar's new parameters make the scroll bar unnecessary, disable the scroll bar instead of removing it
+		mask := SIF_ALL
+		
+		if (PageRECT = 0){
+			PageRECT := this._PageRECT
+		}
+		if (RangeRECT = 0){
+			RangeRECT := this._RangeRECT
+		}
+		
+		; Alter scroll bars due to client size
+		lpsi := this._BlankScrollInfo()
+		lpsi.fMask := mask
+		;lpsi.fMask := SIF_RANGE
+		lpsi.nMin := RangeRECT.Top
+		lpsi.nMax := RangeRECT.Bottom
+		lpsi.nPage := PageRECT.Bottom
+		lpsi.nPos := 0
+		this._SetScrollInfo(SB_VERT, lpsi)
+		
+		lpsi.nMin := RangeRECT.Left
+		lpsi.nMax := RangeRECT.Right
+		lpsi.nPage := PageRECT.Right
+		lpsi.nPos := 0
+		this._SetScrollInfo(SB_HORZ, lpsi)
 	}
 	
 	; The PAGE (Size of window) of a Gui / GuiControl changed. For GuiControls, this is the size of the control
 	_GuiPageGetRect(){
 		RECT := new this.RECT()
 		DllCall("User32.dll\GetClientRect", "Ptr", This._hwnd, "Ptr", RECT[])
-		ToolTip % "Page Width :" RECT.Right ", Height: " RECT.Bottom
+		;ToolTip % "Page Width :" RECT.Right ", Height: " RECT.Bottom
 		return RECT
 	}
 	
@@ -61,6 +95,23 @@ class _CGui extends _CGuiBase {
 		}
 	}
 
+	_BlankScrollInfo(){
+		lpsi := new _Struct(WinStructs.SCROLLINFO)
+		lpsi.cBsize := sizeof(WinStructs.SCROLLINFO)
+		return lpsi
+	}
+
+	; ==================================== DLL CALLS =============================================================
+	
+	_SetScrollInfo(fnBar, ByRef lpsi, fRedraw := 1, hwnd := 0){
+		; https://msdn.microsoft.com/en-us/library/windows/desktop/bb787595%28v=vs.85%29.aspx
+		if (hwnd = 0){
+			; Normal use - operate on youurself. Passed hwnd = inspect another window
+			hwnd := this._hwnd
+		}
+		return DllCall("User32.dll\SetScrollInfo", "Ptr", hwnd, "Int", fnBar, "Ptr", lpsi[], "UInt", fRedraw, "UInt")
+	}
+
 	; ==================================== CLASSES ===============================================================
 	
 	class _CGuiControl extends _CGuiBase {
@@ -71,7 +122,7 @@ class _CGui extends _CGuiBase {
 			GuiControlGet, Pos, % this._parent._hwnd ":Pos", % this._hwnd
 			this._PageRECT := new this.RECT({Top: PosY, Left: PosX, Bottom: PosY + PosH, Right: PosX + PosW})
 			if (!this._parent._PageRECT.contains(this._PageRECT)){
-				this._parent._PageRECT := this._parent._PageRECT.Union(this._PageRECT)
+				this._parent._RangeRECT.Union(this._PageRECT)
 				this._parent._GuiRangeChanged()
 			}
 		}
@@ -138,6 +189,14 @@ class _CGuiBase {
 		; Returns TRUE if it the RECT grew.
 		Union(RECT){
 			Expanded := 0
+			if (RECT.Top < this.RECT.Top){
+				this.RECT.Top := RECT.Top
+				Expanded := 1
+			}
+			if (RECT.Left < this.RECT.Left){
+				this.RECT.Left := RECT.Left
+				Expanded := 1
+			}
 			if (RECT.Right > this.RECT.Right){
 				this.RECT.Right := RECT.Right
 				Expanded := 1
