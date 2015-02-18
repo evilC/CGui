@@ -4,12 +4,12 @@
 #include <WinStructs>
 
 main := new _CGui("+Resize")
-main.Show("w200 h200 y0")
+main.Show("w200 h200")
 
 ;main._GuiRangeChanged()
 
-Loop 9 {
-	main.Gui("Add", "Text",,"Item " A_Index)
+Loop 20 {
+	main.Gui("Add", "Text",,"Hello World")
 }
 
 main._GuiRangeChanged()
@@ -30,26 +30,25 @@ class _CGui {
 	Show(options){
 		Gui, % this._hwnd ":Show", % options
 		this._PageRECT := this._GuiPageGetRect()
-		ToolTip % "Width :" this._PageRECT.Bottom ", Height: " _PageRECT.Right
 	}
- 
+	
 	_GuiRangeChanged(){
 		RangeRECT := this._GuiRangeGetRect()
-		if (!this._RangeRECT.Contains(RangeRECT)){
+		if (!this._RangeRECT.contains1(RangeRECT)){
 			; Range Grew
 			this._RangeRECT := this._GuiRangeGetRect()
-			;ToolTip % "PageH :" this._PageRECT.Bottom ", RangeH: " this._RangeRECT.Bottom
-			if (!this._PageRECT.Contains(this._RangeRECT)){
-				MsgBox RANGE GREW
+			ToolTip % "PageH :" this._PageRECT.Bottom ", RangeH: " this._RangeRECT.Bottom
+			;sleep 1000
+			if (!this._PageRECT.contains1(this._RangeRECT)){
 				SoundBeep
 			}
 		}
 	}
 	
 	_GuiPageGetRect(){
-		RECTClass := new this.RECT()
-		DllCall("User32.dll\GetClientRect", "Ptr", This._hwnd, "Ptr", RECTClass[])
-		return RECTClass
+		lpRect := new _Struct(WinStructs.RECT)
+		DllCall("User32.dll\GetClientRect", "Ptr", This._hwnd, "Ptr", lpRect[])
+		return lpRect
 	}
 
 	; ToDo: Simplify with RECTs.
@@ -106,8 +105,7 @@ class _CGui {
 		Width := RECT.Right + (LH <> "" ? LH : RECT.Left)
 		Height := RECT.Bottom + (TH <> "" ? TH : RECT.Top)
 
-		;ret := new _Struct(WinStructs.RECT)
-		ret := new this.RECT()
+		ret := new _Struct(WinStructs.RECT)
 		ret.Right := Width
 		ret.Bottom := Height
 		return ret
@@ -122,8 +120,14 @@ class _CGui {
 		}
 	}
 
-	; ==================================== CLASSES ===============================================================
-	
+	class _CGuiControl {
+		__New(parent, ctrltype, options := "", text := ""){
+			this._parent := parent
+			Gui, % this._parent.GuiCmd("Add"), % ctrltype, % "hwndhwnd" options, % text
+			this._hwnd := hwnd
+			this._parent._GuiRangeChanged()
+		}
+	}
 	; RECT class. Wraps _Struct to provide functionality similar to C
 	; https://msdn.microsoft.com/en-us/library/system.windows.rect(v=vs.110).aspx
 	class RECT {
@@ -134,23 +138,11 @@ class _CGui {
 			this.RECT := new _Struct(WinStructs.RECT, RECT)
 		}
 		
-		__Get(aParam := ""){
-			static keys := {Top: 1, Left: 1, Bottom: 1, Right: 1}
-			if (aParam = ""){
-				; Blank param passed via [""] - pass back RECT Structure
-				return this.RECT[""]
-			}
-			if (ObjHasKey(keys, aParam)){
-				return this.RECT[aParam]
-			}
+		__Get(aParam){
+			return this.RECT[aParam]
 		}
 		
-		__Set(aParam = "", aValue := ""){
-			if (aParam = ""){
-				; Blank param passed via [""] - set RECT Structure
-				;return this.RECT
-				this.RECT := aValue
-			}
+		__Set(aParam, aValue){
 			static keys := {Top: 1, Left: 1, Bottom: 1, Right: 1}
 			if (ObjHasKey(keys, aParam)){
 				this.RECT[aParam] := aValue
@@ -158,10 +150,12 @@ class _CGui {
 		}
 		
 		; Does this RECT contain the passed rect ?
-		Contains(RECT){
+		contains1(RECT){
 			c := (this.RECT.Bottom >= RECT.Bottom && this.RECT.Right >= RECT.Right)
 			b1 := this.RECT.Bottom
 			b2 := RECT.Bottom
+			
+			;MsgBox % "Me: " this.RECT.Bottom " It: " RECT.Bottom
 			return c
 		}
 		
@@ -186,36 +180,8 @@ class _CGui {
 		}
 	}
 
-	class _CGuiControl {
-		__New(parent, ctrltype, options := "", text := ""){
-			this._parent := parent
-			Gui, % this._parent.GuiCmd("Add"), % ctrltype, % "hwndhwnd" options, % text
-			this._hwnd := hwnd
-			this._parent._GuiRangeChanged()
-		}
-	}
-
 	Guicmd(cmd){
 		return this._hwnd ":" cmd
 	}
-
-	/*
-	ToObj(){
-		return {Top: this.RECT.Top, Bottom: this.RECT.Bottom, Left: this.RECT.Left, Right: this.RECT.Right}
-	}
-	
-	ToObj(struct){
-	  obj:=[]
-	  for k,v in struct
-	  {
-		if (Asc(k)=10){
-		  If IsObject(_Value_:=struct[_TYPE_:=SubStr(k,2)])
-			obj[_TYPE_]:=ToObj(_Value_)
-		  else obj[_TYPE_]:=_Value_
-		}
-	  }
-	  return obj
-	}
-	*/
 
 }
