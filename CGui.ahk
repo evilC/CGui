@@ -6,51 +6,46 @@
 main := new _CGui("+Resize")
 main.Show("w200 h200 y0")
 
-;main._GuiRangeChanged()
 
-Loop 9 {
+Loop 8 {
 	main.Gui("Add", "Text",,"Item " A_Index)
 }
-
-main._GuiRangeChanged()
 
 return
 Esc::
 GuiClose:
 	ExitApp
 
-class _CGui {
+class _CGui extends _CGuiBase {
 	__New(options := 0){
 		Gui, new, % "hwndhwnd " options
 		this._hwnd := hwnd
 		this._PageRECT := new this.RECT()
 		this._RangeRECT := new this.RECT()
 	}
+
+	__Destroy(){
+		; If top touches range top, left touches page left, right touches page right, or bottom touches page bottom...
+		; Removing this GuiControl should trigger a RANGE CHANGE.
+		; Same for Gui, Hide?
+	}
 	
 	Show(options){
 		Gui, % this._hwnd ":Show", % options
 		this._PageRECT := this._GuiPageGetRect()
-		ToolTip % "Width :" this._PageRECT.Bottom ", Height: " _PageRECT.Right
 	}
  
 	; The RANGE (Size of contents) of a GUI / GuiControl changed (Most GuiControls would not have a Range, just a page)
 	_GuiRangeChanged(){
-		RangeRECT := this._GuiRangeGetRect()
-		if (!this._RangeRECT.Contains(RangeRECT)){
-			; Range Grew
-			this._RangeRECT := this._GuiRangeGetRect()
-			;ToolTip % "PageH :" this._PageRECT.Bottom ", RangeH: " this._RangeRECT.Bottom
-			if (!this._PageRECT.Contains(this._RangeRECT)){
-				MsgBox RANGE GREW
-				SoundBeep
-			}
-		}
+		this._RangeRECT := this._GuiRangeGetRect()
+		SoundBeep
 	}
 	
 	; The PAGE (Size of window) of a Gui / GuiControl changed. For GuiControls, this is the size of the control
 	_GuiPageGetRect(){
 		RECTClass := new this.RECT()
 		DllCall("User32.dll\GetClientRect", "Ptr", This._hwnd, "Ptr", RECTClass[])
+		ToolTip % "Page Width :" RECTClass.Right ", Height: " RECTClass.Bottom
 		return RECTClass
 	}
 
@@ -118,6 +113,50 @@ class _CGui {
 		}
 	}
 
+	class _CGuiControl extends _CGuiBase {
+		__New(parent, ctrltype, options := "", text := ""){
+			this._parent := parent
+			Gui, % this._parent.GuiCmd("Add"), % ctrltype, % "hwndhwnd" options, % text
+			this._hwnd := hwnd
+			GuiControlGet, Pos, % this._parent._hwnd ":Pos", % this._hwnd
+			this._PageRECT := new this.RECT({Top: PosY, Left: PosX, Bottom: PosY + PosH, Right: PosX + PosW})
+			if (!this._parent._PageRECT.contains(this._PageRECT)){
+				this._parent._GuiRangeChanged()
+			}
+		}
+		
+		__Destroy(){
+			; If top touches range top, left touches page left, right touches page right, or bottom touches page bottom...
+			; Removing this GuiControl should trigger a RANGE CHANGE.
+			; Same for Hiding a GuiControl?
+		}
+	}
+
+	Guicmd(cmd){
+		return this._hwnd ":" cmd
+	}
+
+	/*
+	ToObj(){
+		return {Top: this.RECT.Top, Bottom: this.RECT.Bottom, Left: this.RECT.Left, Right: this.RECT.Right}
+	}
+	
+	ToObj(struct){
+	  obj:=[]
+	  for k,v in struct
+	  {
+		if (Asc(k)=10){
+		  If IsObject(_Value_:=struct[_TYPE_:=SubStr(k,2)])
+			obj[_TYPE_]:=ToObj(_Value_)
+		  else obj[_TYPE_]:=_Value_
+		}
+	  }
+	  return obj
+	}
+	*/
+}
+
+class _CGuiBase {
 	; ==================================== CLASSES ===============================================================
 	
 	; RECT class. Wraps _Struct to provide functionality similar to C
@@ -155,7 +194,7 @@ class _CGui {
 		
 		; Does this RECT contain the passed rect ?
 		Contains(RECT){
-			return (this.RECT.Bottom >= RECT.Bottom && this.RECT.Right >= RECT.Right)
+			return (this.RECT.Top <= RECT.Top && this.RECT.Left <= RECT.Left && this.RECT.Bottom >= RECT.Bottom && this.RECT.Right >= RECT.Right)
 		}
 		
 		; Is this RECT equal to the passed RECT?
@@ -178,37 +217,4 @@ class _CGui {
 			return Expanded
 		}
 	}
-
-	class _CGuiControl {
-		__New(parent, ctrltype, options := "", text := ""){
-			this._parent := parent
-			Gui, % this._parent.GuiCmd("Add"), % ctrltype, % "hwndhwnd" options, % text
-			this._hwnd := hwnd
-			this._parent._GuiRangeChanged()
-		}
-	}
-
-	Guicmd(cmd){
-		return this._hwnd ":" cmd
-	}
-
-	/*
-	ToObj(){
-		return {Top: this.RECT.Top, Bottom: this.RECT.Bottom, Left: this.RECT.Left, Right: this.RECT.Right}
-	}
-	
-	ToObj(struct){
-	  obj:=[]
-	  for k,v in struct
-	  {
-		if (Asc(k)=10){
-		  If IsObject(_Value_:=struct[_TYPE_:=SubStr(k,2)])
-			obj[_TYPE_]:=ToObj(_Value_)
-		  else obj[_TYPE_]:=_Value_
-		}
-	  }
-	  return obj
-	}
-	*/
-
 }
