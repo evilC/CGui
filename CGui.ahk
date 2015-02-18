@@ -21,12 +21,13 @@ GuiClose:
 	ExitApp
 
 class _CGui extends _CGuiBase {
+	; ========================================== GUI COMMAND WRAPPERS =============================
 	__New(options := 0){
 		Gui, new, % "hwndhwnd " options
 		this._hwnd := hwnd
-		; ToDo - set Page and Range to _GuiPageGetRect() - initialize with saner values, not 0!
-		this._PageRECT := new this.RECT()
-		this._RangeRECT := new this.RECT()
+		this._PageRECT := this._GuiPageGetRect()
+		; Set Range to size of Page for now.
+		this._RangeRECT := this._GuiPageGetRect()
 	}
 
 	__Destroy(){
@@ -40,52 +41,7 @@ class _CGui extends _CGuiBase {
 		this._PageRECT := this._GuiPageGetRect()
 	}
  
-	; The RANGE (Size of contents) of a GUI / GuiControl changed (Most GuiControls would not have a Range, just a page)
-	_GuiRangeChanged(){
-		SoundBeep
-		this._GuiSetScrollbar()
-	}
-	
-	_GuiSetScrollbar(PageRECT := 0, RangeRECT := 0, mask := 0x3){
-		Static SB_HORZ := 0, SB_VERT = 1
-		static SIF_DISABLENOSCROLL := 0x8
-		static SIF_RANGE := 0x1, SIF_PAGE := 0x2, SIF_POS := 0x4, SIF_ALL := 0x17
-		
-		;mask |= SIF_DISABLENOSCROLL	; If the scroll bar's new parameters make the scroll bar unnecessary, disable the scroll bar instead of removing it
-		mask := SIF_ALL
-		
-		if (PageRECT = 0){
-			PageRECT := this._PageRECT
-		}
-		if (RangeRECT = 0){
-			RangeRECT := this._RangeRECT
-		}
-		
-		; Alter scroll bars due to client size
-		lpsi := this._BlankScrollInfo()
-		lpsi.fMask := mask
-		;lpsi.fMask := SIF_RANGE
-		lpsi.nMin := RangeRECT.Top
-		lpsi.nMax := RangeRECT.Bottom
-		lpsi.nPage := PageRECT.Bottom
-		lpsi.nPos := 0
-		this._SetScrollInfo(SB_VERT, lpsi)
-		
-		lpsi.nMin := RangeRECT.Left
-		lpsi.nMax := RangeRECT.Right
-		lpsi.nPage := PageRECT.Right
-		lpsi.nPos := 0
-		this._SetScrollInfo(SB_HORZ, lpsi)
-	}
-	
-	; The PAGE (Size of window) of a Gui / GuiControl changed. For GuiControls, this is the size of the control
-	_GuiPageGetRect(){
-		RECT := new this.RECT()
-		DllCall("User32.dll\GetClientRect", "Ptr", This._hwnd, "Ptr", RECT[])
-		;ToolTip % "Page Width :" RECT.Right ", Height: " RECT.Bottom
-		return RECT
-	}
-	
+	; Wrapper for Gui commands
 	Gui(cmd, aParams*){
 		if (cmd = "add"){
 			; Create GuiControl
@@ -95,15 +51,100 @@ class _CGui extends _CGuiBase {
 		}
 	}
 
+
+	; ========================================== DIMENSIONS =======================================
+
+	; The RANGE (Size of contents) of a GUI / GuiControl changed (Most GuiControls would not have a Range, just a page)
+	_GuiRangeChanged(){
+		SoundBeep
+		this._GuiSetScrollbarSize()
+	}
+	
+	; The PAGE (Size of window) of a Gui / GuiControl changed. For GuiControls, this is the size of the control
+	_GuiPageGetRect(){
+		RECT := this._DLL_GetClientRect()
+		return RECT
+	}
+	
+	; ========================================== SCROLL BARS ======================================
+
+	_GuiSetScrollbarSize(PageRECT := 0, RangeRECT := 0, mode := "b"){
+		Static SB_HORZ := 0, SB_VERT = 1
+		static SIF_DISABLENOSCROLL := 0x8
+		static SIF_RANGE := 0x1, SIF_PAGE := 0x2, SIF_POS := 0x4, SIF_ALL := 0x17
+		
+		if (mode = "p"){
+			; Set PAGE
+			mask := SIF_PAGE
+		} else if (mode = "r"){
+			; Set RANGE
+			mask := SIF_RANGE
+		} else {
+			; SET PAGE + RANGE
+			mask := SIF_PAGE | SIF_RANGE
+		}
+		;mask |= SIF_DISABLENOSCROLL	; If the scroll bar's new parameters make the scroll bar unnecessary, disable the scroll bar instead of removing it
+		;mask := SIF_ALL
+		
+		if (PageRECT = 0){
+			PageRECT := this._PageRECT
+		}
+		if (RangeRECT = 0){
+			RangeRECT := this._RangeRECT
+		}
+		
+		; Alter scroll bars due to client size
+		Vlpsi := this._BlankScrollInfo()
+		Hlpsi := this._BlankScrollInfo()
+		
+		Vlpsi.fMask := mask
+		Hlpsi.fMask := mask
+		
+		if (mask & SIF_RANGE){
+			Vlpsi.nMin := RangeRECT.Top
+			Vlpsi.nMax := RangeRECT.Bottom
+			
+			Hlpsi.nMin := RangeRECT.Left
+			Hlpsi.nMax := RangeRECT.Right
+		}
+		
+		if (mask & SIF_RANGE){
+			Vlpsi.nPage := PageRECT.Bottom
+			Hlpsi.nPage := PageRECT.Right
+		}
+		
+		;if (mask & SIF_POS){
+		;	Vlpsi.nPos := 0
+		;	Hlpsi.nPos := 0
+		;}
+
+		this._DLL_SetScrollInfo(SB_VERT, Vlpsi)
+		this._DLL_SetScrollInfo(SB_HORZ, Hlpsi)
+	}
+
+	; Sets cbSize, returns blank scrollinfo
 	_BlankScrollInfo(){
 		lpsi := new _Struct(WinStructs.SCROLLINFO)
-		lpsi.cBsize := sizeof(WinStructs.SCROLLINFO)
+		lpsi.cbSize := sizeof(WinStructs.SCROLLINFO)
 		return lpsi
 	}
 
-	; ==================================== DLL CALLS =============================================================
+
+	; ========================================== DLL CALLS ========================================
 	
-	_SetScrollInfo(fnBar, ByRef lpsi, fRedraw := 1, hwnd := 0){
+	; Wraps GetClientRect() Dll call, returns RECT class (Not Structure! Class!)
+	_DLL_GetClientRect(hwnd := 0){
+		if (hwnd = 0){
+			hwnd := this._hwnd
+		}
+		RECT := new this.RECT()
+		DllCall("User32.dll\GetClientRect", "Ptr", hwnd, "Ptr", RECT[])
+		return RECT
+	}
+
+	; Wraps SetScrollInfo() Dll call.
+	; Returns Dll Call return value
+	_DLL_SetScrollInfo(fnBar, ByRef lpsi, fRedraw := 1, hwnd := 0){
 		; https://msdn.microsoft.com/en-us/library/windows/desktop/bb787595%28v=vs.85%29.aspx
 		if (hwnd = 0){
 			; Normal use - operate on youurself. Passed hwnd = inspect another window
@@ -112,7 +153,7 @@ class _CGui extends _CGuiBase {
 		return DllCall("User32.dll\SetScrollInfo", "Ptr", hwnd, "Int", fnBar, "Ptr", lpsi[], "UInt", fRedraw, "UInt")
 	}
 
-	; ==================================== CLASSES ===============================================================
+	; ========================================== CLASSES ==========================================
 	
 	class _CGuiControl extends _CGuiBase {
 		__New(parent, ctrltype, options := "", text := ""){
@@ -140,7 +181,7 @@ class _CGui extends _CGuiBase {
 }
 
 class _CGuiBase {
-	; ==================================== CLASSES ===============================================================
+	; ========================================== CLASSES ==========================================
 	
 	; RECT class. Wraps _Struct to provide functionality similar to C
 	; https://msdn.microsoft.com/en-us/library/system.windows.rect(v=vs.110).aspx
