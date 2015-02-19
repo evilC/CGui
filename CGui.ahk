@@ -7,7 +7,6 @@
 
 #include <_Struct>
 #include <WinStructs>
-;#include *i <SkinSharp>
 
 main := new _CGui("+Resize")
 main.Show("w200 h100 y0", "CGui Demo")
