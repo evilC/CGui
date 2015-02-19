@@ -11,13 +11,15 @@
 main := new _CGui(0,"+Resize")
 main.Show("w200 h200 y0", "CGui Demo")
 
+; Border causes edit boxes to not be selectable
+;main.Child := new _Cgui(main, "+Border +Resize +Parent" main._hwnd)
+main.Child := new _Cgui(main, "-Border +Resize +Parent" main._hwnd)
 
-;~ Loop 8 {
-	;~ main.Gui("Add", "Text", "w300 Center", "Item " A_Index)
-;~ }
-
-main.Child := new _Cgui(main, "+Border +Parent" main._hwnd)
 main.Child.Show("w150 h150 x0 y0")
+
+Loop 8 {
+	main.Child.Gui("Add", "Edit", "w300", "Item " A_Index)
+}
 
 return
 Esc::
@@ -119,6 +121,7 @@ class _CGui extends _CGuiBase {
 	
 	; Called when a GUI Moves.
 	; If the GUI moves outside it's parent's RECT, enlarge the parent's RANGE
+	; ToDo: Needs work? buggy?
 	_OnMove(wParam, lParam, msg, hwnd){
 		;SoundBeep
 		; ToDo:
@@ -138,6 +141,13 @@ class _CGui extends _CGuiBase {
 			this._WindowRECT := new this.RECT({Left: POINT.x, Top: POINT.y, Right: POINT.x + Width, Bottom: POINT.y + height})
 			; Enlarge Parent's RANGE if needed.
 			if (this._parent._PageRECT.contains(this._WindowRECT)){
+				if (!this._parent._RangeRECT.Union(this._WindowRECT)){
+					;this._parent._GuiSetScrollbarSize()
+					; Size down
+					;SoundBeep
+					this._parent._RangeRECT := this._WindowRECT
+					this._parent._GuiSetScrollbarSize()
+				}
 				; Window Bounds are inside parent's PAGE
 
 				tooltip % "Range B: "  this._parent._RangeRECT.Bottom ", R: " this._parent._RangeRECT.Right ", Bottom: " height + POINT.y ", Right: " Width + POINT.x
