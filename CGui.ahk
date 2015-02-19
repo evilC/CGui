@@ -11,9 +11,8 @@
 main := new _CGui("+Resize")
 main.Show("w200 h100 y0")
 
-
 Loop 8 {
-	main.Gui("Add", "Text", "w500", "Item " A_Index)
+	main.Gui("Add", "Text", "w300 Center", "Item " A_Index)
 }
 
 return
@@ -34,7 +33,11 @@ class _CGui extends _CGuiBase {
 		this._hwnd := hwnd
 		
 		; Set Range to size of Page to start off with.
-		this._RangeRECT := this._GuiPageGetRect()
+		;this._RangeRECT := this._GuiPageGetRect()
+		;this._PageRECT := this._RangeRECT
+		; Initialize page and range to 0 - gui does not have size until child added or Show.
+		this._RangeRECT := new this.RECT()
+		this._PageRECT := new this.RECT()
 		
 		; Initialize scroll info array
 		this._ScrollInfos := {0: this._GetScrollInfo(SB_HORZ), 1: this._GetScrollInfo(SB_VERT)}
@@ -75,17 +78,60 @@ class _CGui extends _CGuiBase {
 		this._GuiSetScrollbarSize()
 	}
 	
+	/*
 	; The PAGE (Size of window) of a Gui / GuiControl changed. For GuiControls, this is the size of the control
 	_GuiPageGetRect(){
 		RECT := this._DLL_GetClientRect()
 		return RECT
 	}
+	*/
 
 	; Adjust this._PageRECT when Gui Size Changes (ie it was Resized)
+	; Handles WM_SIZE message
+	; https://msdn.microsoft.com/en-us/library/windows/desktop/ms632646%28v=vs.85%29.aspx
 	_OnSize(wParam, lParam, msg, hwnd){
 		; ToDo: Need to check if hwnd matches this._hwnd ?
-		this._PageRECT := this._GuiPageGetRect()
-		this._GuiSetScrollbarSize()
+		static SIZE_RESTORED := 0, SIZE_MINIMIZED := 1, SIZE_MAXIMIZED := 2, SIZE_MAXSHOW := 3, SIZE_MAXHIDE := 4
+		
+		w := lParam & 0xffff
+		h := lParam >> 16
+		if (w != this._PageRECT.Right || h != this._PageRECT.Bottom){
+			; resize
+			;SoundBeep
+			;MsgBox % "new: " lParam & 0xffff ", " lParam >> 16 " != old: " this._PageRECT.Right ", " this._PageRECT.Bottom " !"
+			this._PageRECT.Right := w
+			this._PageRECT.Bottom := h
+		}
+
+		; Check if size changed
+		if (wParam = SIZE_RESTORED || wParam = SIZE_MAXIMIZED){
+			;this._PageRECT := this._GuiPageGetRect()
+			this._GuiSetScrollbarSize()
+		
+			Loop 2 {
+				bar := A_Index - 1
+				if (this._ScrollInfos[bar].nPos){
+					end := this._ScrollInfos[bar].nPos + this._ScrollInfos[bar].nPage
+					diff := this._ScrollInfos[bar].nMax - end
+					diff *= -1
+					if (bar) {
+						h := 0
+						v := diff
+					} else {
+						h := diff
+						v := 0
+					}
+					if (diff > 0){
+						this._DLL_ScrollWindow(h,v)
+						if (bar){
+							this._ScrollInfos[bar].nPos -= v
+						} else {
+							this._ScrollInfos[bar].nPos	-= h
+						}
+					}
+				}
+			}
+		}
 	}
 
 	; ========================================== SCROLL BARS ======================================
@@ -245,6 +291,7 @@ class _CGui extends _CGuiBase {
 		return DllCall("User32.dll\ScrollWindow", "Ptr", hwnd, "Int", XAmount, "Int", YAmount, "Ptr", 0, "Ptr", 0)
 	}
 
+	/*
 	; Wraps GetClientRect() Dll call, returns RECT class (Not Structure! Class!)
 	_DLL_GetClientRect(hwnd := 0){
 		if (hwnd = 0){
@@ -254,7 +301,8 @@ class _CGui extends _CGuiBase {
 		DllCall("User32.dll\GetClientRect", "Ptr", hwnd, "Ptr", RECT[])
 		return RECT
 	}
-
+	*/
+	
 	; Wraps SetScrollInfo() Dll call.
 	; Returns Dll Call return value
 	_DLL_SetScrollInfo(fnBar, ByRef lpsi, fRedraw := 1, hwnd := 0){
