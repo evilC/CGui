@@ -173,7 +173,11 @@ class _CGui extends _CGuiBase {
 		;Return r
 	}
 
+	; A scrollbar was dragged
 	_OnScroll(wParam, lParam, msg, hwnd){
+		; Handles:
+		; WM_VSCROLL https://msdn.microsoft.com/en-gb/library/windows/desktop/bb787577(v=vs.85).aspx
+		; WM_HSCROLL https://msdn.microsoft.com/en-gb/library/windows/desktop/bb787575(v=vs.85).aspx
 		Critical
 		static WM_HSCROLL := 0x0114, WM_VSCROLL := 0x0115
 		Static SB_HORZ := 0, SB_VERT = 1
@@ -186,19 +190,34 @@ class _CGui extends _CGuiBase {
 			return
 		}
 		ScrollInfo := this._GetScrollInfo(bar)
-		OutputDebug, % "SI: " ScrollInfo.nTrackPos ", Bar: " bar
+		;OutputDebug, % "SI: " ScrollInfo.nTrackPos ", Bar: " bar
 
-		if (wParam = SB_THUMBTRACK){
-			;SoundBeep
-		} else if (wParam = SB_ENDSCROLL){
-			; Scrollbar drag ended
-			this._GuiSetScrollbarPos(ScrollInfo.nTrackPos, bar)
-		} else if (wParam <= SB_ENDSCROLL) {
+		if (wParam = SB_LINEUP || wParam = SB_LINEDOWN){
+			; "Scrolls one line up / Scrolls one line down"
 			; Is an unimplemented flag
 			SoundBeep, 100, 100
-			
+		} else if (wParam = SB_PAGEUP || wParam = SB_PAGEDOWN){
+			; "Scrolls one page up / Scrolls one page down"
+			; Is an unimplemented flag
+			SoundBeep, 100, 100
+		/*
+		} else if (wParam = SB_THUMBTRACK){
+			; "The user is dragging the scroll box. This message is sent repeatedly until the user releases the mouse button"
+			; This is bundled in with the drags, as same code seems good.
+		} else if (wParam = SB_THUMBPOSITION || wParam = SB_ENDSCROLL){
+			; This is bundled in with the drags, as same code seems good.
+			this._GuiSetScrollbarPos(ScrollInfo.nTrackPos, bar)
+		} else if (wParam = SB_TOP || wParam = SB_BOTTOM) {
+			; "Scrolls to the upper left" / "Scrolls to the lower right"
+			; Not entirely sure what these are for, disable for now
+			SoundBeep, 100, 100
+		*/
 		} else {
 			; Drag of scrollbar
+			; Handles SB_THUMBTRACK, SB_THUMBPOSITION, SB_ENDSCROLL Flags (Indicated by wParam has set LOWORD, Highest value is 0x8 which is SB_ENDSCROLL) ...
+			; These Flags generally only get set once each per drag.
+			; ... Also handles drag of scrollbar (wParam has set HIWORD = "current position of the scroll box"), so wParam will be very big.
+			; This HIWORD "Flag" gets set lots of times per drag.
 			if (bar){
 				; Vertical Bar
 				h := 0
@@ -208,9 +227,10 @@ class _CGui extends _CGuiBase {
 				h := (ScrollInfo.nTrackPos - this._ScrollInfos[bar].nPos) * -1
 				v := 0
 			}
-			;OutputDebug, % "[ " this._FormatHwnd() " ] " this._FormatFuncName(A_ThisFunc) "   Scrolling window by (x,y) " h ", " v
+			;OutputDebug, % "[ " this._FormatHwnd() " ] " this._FormatFuncName(A_ThisFunc) "   Scrolling window by (x,y) " h ", " v " - new Pos: " this._ScrollInfos[bar].nPos
 			this._DLL_ScrollWindow(h, v)
 			this._ScrollInfos[bar].nPos := ScrollInfo.nTrackPos
+			this._GuiSetScrollbarPos(ScrollInfo.nTrackPos, bar)
 		}
 	}
 
