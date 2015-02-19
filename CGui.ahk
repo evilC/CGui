@@ -8,12 +8,14 @@
 #include <_Struct>
 #include <WinStructs>
 
+BorderState := 1
+
 main := new _CGui(0,"+Resize")
 main.Show("w200 h200 y0", "CGui Demo")
+Menu, Menu1, Add, Border, ToggleBorder
+Gui, Menu, Menu1
 
-; Border causes edit boxes to not be selectable
-;main.Child := new _Cgui(main, "+Border +Resize +Parent" main._hwnd)
-main.Child := new _Cgui(main, "-Border +Resize +Parent" main._hwnd)
+main.Child := new _Cgui(main, BoolToSgn(BorderState) "Border +Resize +Parent" main._hwnd)
 
 main.Child.Show("w150 h150 x0 y0")
 
@@ -22,10 +24,24 @@ Loop 8 {
 }
 
 return
+
+ToggleBorder:
+	BorderState := !BorderState
+	Gui, % main.Child._hwnd ":" BoolToSgn(BorderState) "Border"
+	
+	return
+
 Esc::
 GuiClose:
 	ExitApp
 
+BoolToSgn(bool){
+	if (bool){
+		return "+"
+	} else {
+		return "-"
+	}
+}
 ; Wraps All Gui commands - Guis and GuiControls
 class _CGui extends _CGuiBase {
 	; ScrollInfo array - Declared as associative, but consider 0-based indexed. 0-based so SB_HORZ / SB_VERT map to correct elements.
@@ -150,7 +166,7 @@ class _CGui extends _CGuiBase {
 				}
 				; Window Bounds are inside parent's PAGE
 
-				tooltip % "Range B: "  this._parent._RangeRECT.Bottom ", R: " this._parent._RangeRECT.Right ", Bottom: " height + POINT.y ", Right: " Width + POINT.x
+				;tooltip % "Range B: "  this._parent._RangeRECT.Bottom ", R: " this._parent._RangeRECT.Right ", Bottom: " height + POINT.y ", Right: " Width + POINT.x
 				;if (this._parent._RangeRECT.contains(this._WindowRECT)){
 				;}
 			} else {
