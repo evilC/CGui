@@ -99,16 +99,18 @@ class _CGui extends _CGuiBase {
 			if ( ( bar=0 && (bars = 0 || bars = 2) )   ||  ( bar=1 && (bars = 0 || bars = 2) ) ){
 				this._ScrollInfos[bar].fMask := SIF_POS
 				this._ScrollInfos[bar].nPos := nTrackPos
-				this._DLL_SetScrollInfo(SB_HORZ, this._ScrollInfos[bar])
+				this._DLL_SetScrollInfo(bar, this._ScrollInfos[bar])
 			}
 		}
 	}
 	
 	; Set the SIZE component(s) of a scrollbar - PAGE and RANGE
-	_GuiSetScrollbarSize(bar := 2, PageRECT := 0, RangeRECT := 0, mode := "b"){
+	_GuiSetScrollbarSize(bars := 2, PageRECT := 0, RangeRECT := 0, mode := "b"){
 		Static SB_HORZ := 0, SB_VERT = 1
 		static SIF_DISABLENOSCROLL := 0x8
 		static SIF_RANGE := 0x1, SIF_PAGE := 0x2, SIF_POS := 0x4, SIF_ALL := 0x17
+		; Index Min / Max property names of a RECT by SB_HORZ = 0, SB_VERT = 1
+		static RECTProperties := { 0: {min: "Left", max: "Right"}, 1: {min: "Top", max: "Bottom"} }
 		
 		; Determine what part of the scrollbars we wish to set.
 		if (mode = "p"){
@@ -133,37 +135,26 @@ class _CGui extends _CGuiBase {
 		}
 		
 		; Alter scroll bars due to client size
-		
-		; Process Horizontal bar
-		if (bar = 0 || bar = 2){
-			ScrollInfoH := this._BlankScrollInfo()
-			ScrollInfoH.fMask := mask
-			if (mask & SIF_RANGE){
-				ScrollInfoH.nMin := RangeRECT.Left
-				ScrollInfoH.nMax := RangeRECT.Right
+		Loop 2 {
+			bar := A_Index - 1 ; SB_HORZ = 0, SB_VERT = 1
+			if ( ( bar=0 && (bars = 0 || bars = 2) )   ||  ( bar=1 && bars > 0 ) ){
+				; If this scroll bar was specified ...
+				; ... Adjust this window's ScrollBar Struct as appropriate, ...
+				this._ScrollInfos[bar].fMask := mask
+				if (mask & SIF_RANGE){
+					; Range bits set
+					this._ScrollInfos[bar].nMin := RangeRECT[RECTProperties[bar].min]
+					this._ScrollInfos[bar].nMax := RangeRECT[RECTProperties[bar].max]
+				}
+				
+				if (mask & SIF_PAGE){
+					; Page bits set
+					this._ScrollInfos[bar].nPage := PageRECT[RECTProperties[bar].max]
+				}
+				; ... Then update the Scrollbar.
+				this._DLL_SetScrollInfo(bar, this._ScrollInfos[bar])
 			}
-			
-			if (mask & SIF_PAGE){
-				ScrollInfoH.nPage := PageRECT.Right
-			}
-			this._DLL_SetScrollInfo(SB_HORZ, ScrollInfoH)
 		}
-		
-		; Process Vertical bar
-		if (bar > 0){
-			ScrollInfoV := this._BlankScrollInfo()
-			ScrollInfoV.fMask := mask
-			if (mask & SIF_RANGE){
-				ScrollInfoV.nMin := RangeRECT.Top
-				ScrollInfoV.nMax := RangeRECT.Bottom
-			}
-			
-			if (mask & SIF_PAGE){
-				ScrollInfoV.nPage := PageRECT.Bottom
-			}
-			this._DLL_SetScrollInfo(SB_VERT, ScrollInfoV)
-		}
-		
 	}
 
 	; Sets cbSize, returns blank scrollinfo
@@ -188,12 +179,29 @@ class _CGui extends _CGuiBase {
 	}
 
 	_OnScroll(wParam, lParam, msg, hwnd){
+		Critical
+		static WM_HSCROLL := 0x0114, WM_VSCROLL := 0x0115
 		Static SB_HORZ := 0, SB_VERT = 1
-
-		SI := this._GetScrollInfo(SB_VERT)
 		
-		;this._GuiSetScrollbarPos(SB_VERT, SI.nTrackPos)
-		;ToolTip % "TrackPos: " SI.nTrackPos
+		if (msg = WM_HSCROLL || msg = WM_VSCROLL){
+			msg -= 0x114
+		} else {
+			return
+		}
+
+		SI := this._GetScrollInfo(msg)
+		ToolTip % "Current Pos: " this._ScrollInfos[msg].nPos "`nThumb Pos: " SI[msg].nTrackPos
+		if (msg){
+			; Vertical Bar
+			h := 0
+			v := (SI.nTrackPos - this._ScrollInfos[msg].nPos) * -1
+		} else {
+			; Horiz Bar
+			h := (SI.nTrackPos - this._ScrollInfos[msg].nPos) * -1
+			v := 0
+		}
+		this._DLL_ScrollWindow(h, v)
+		this._ScrollInfos[msg].nPos := SI[msg].nTrackPos
 		
 	}
 
