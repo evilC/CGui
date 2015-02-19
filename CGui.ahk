@@ -8,12 +8,16 @@
 #include <_Struct>
 #include <WinStructs>
 
-main := new _CGui("+Resize")
-main.Show("w200 h100 y0", "CGui Demo")
+main := new _CGui(0,"+Resize")
+main.Show("w200 h200 y0", "CGui Demo")
 
+/*
 Loop 8 {
 	main.Gui("Add", "Text", "w300 Center", "Item " A_Index)
 }
+*/
+main.Child := new _Cgui(main, "+Border +Parent" main._hwnd)
+main.Child.Show("w150 h150 x0 y0")
 
 return
 Esc::
@@ -27,9 +31,10 @@ class _CGui extends _CGuiBase {
 	
 	; ========================================== GUI COMMAND WRAPPERS =============================
 	; Equivalent to Gui, New
-	__New(options := 0){
+	__New(parent := 0, options := 0, aParams*){
+		this._parent := parent
 		Static SB_HORZ := 0, SB_VERT = 1
-		static WM_SIZE := 0x0005
+		static WM_MOVE := 0x0003, WM_SIZE := 0x0005
 		static WM_HSCROLL := 0x0114, WM_VSCROLL := 0x0115
 		
 		Gui, new, % "hwndhwnd " options
@@ -48,6 +53,10 @@ class _CGui extends _CGuiBase {
 		; Register for scroll (drag of thumb) messages
 		this._RegisterMessage(WM_HSCROLL,this._OnScroll)
 		this._RegisterMessage(WM_VSCROLL,this._OnScroll)
+		
+		; Register for move message.
+		; ToDo, why does base class not get Move messages?
+		this._RegisterMessage(WM_MOVE,this._OnMove)
 
 	}
 
@@ -71,8 +80,9 @@ class _CGui extends _CGuiBase {
 	Gui(cmd, aParams*){
 		if (cmd = "add"){
 			; Create GuiControl
-			obj := new this._CGuiControl(this, aParams*)
-			
+			return new this._CGuiControl(this, aParams*)
+		} else if (cmd = "new"){
+			obj := new _CGui(this, aParams*)
 			return obj
 		}
 	}
@@ -107,6 +117,24 @@ class _CGui extends _CGuiBase {
 			; Adjust Scrollbars if required
 			this._GuiSetScrollbarSize()
 		}
+	}
+	
+	_OnMove(wParam, lParam, msg, hwnd){
+		; ToDo:
+		; Store _WindowRECT on object?
+		; OnMove for base class sets window position in INI
+		; We need outer rect (client area plus "chrome") of THIS window relatice to PARENT windows INNER rect.
+		; lParam x/y coords are relative to outer rect
+		WinGetPos, X, Y, Width, Height, % "ahk_id " this._hwnd
+		
+		POINT := this._DLL_ScreenToClient(this._parent._hwnd,x,y)
+		
+		;tooltip % y
+		if ( (height + POINT.y) > this._parent._PageRECT.Bottom || (Width + POINT.x) > this._parent._PageRECT.Right ){
+			; Only checks bottom right, check top left too
+			SoundBeep
+		}
+	
 	}
 
 	; ========================================== SCROLL BARS ======================================
@@ -285,6 +313,24 @@ class _CGui extends _CGuiBase {
 
 	; ========================================== DLL CALLS ========================================
 
+	; ACCEPTS x, y
+	; Returns a POINT
+	_DLL_ScreenToClient(hwnd, x, y){
+		; https://msdn.microsoft.com/en-gb/library/windows/desktop/dd162952(v=vs.85).aspx
+		lpPoint := new _Struct(WinStructs.POINT, {x: x, y: y})
+		r := DllCall("User32.dll\ScreenToClient", "Ptr", hwnd, "Ptr", lpPoint[], "Uint")
+		return lpPoint
+	}
+	
+	/*
+	_DLL_MapWindowPoints(hwndFrom, hwndTo, ByRef lpPoints, cPoints := 2){
+		; https://msdn.microsoft.com/en-gb/library/windows/desktop/dd145046(v=vs.85).aspx
+		lpPoints := new _Struct(WinStructs.RECT)
+		r := DllCall("User32.dll\MapWindowPoints", "Ptr", hwndFrom, "Ptr", hwndTo, "Ptr", lpPoints[], "Uint", cPoints, "Uint")
+		return lpPoints
+	}
+	*/
+	
 	; Wraps ScrollWindow() DLL Call.
 	_DLL_ScrollWindow(XAmount, YAmount, hwnd := 0){
 		; https://msdn.microsoft.com/en-us/library/windows/desktop/bb787591%28v=vs.85%29.aspx
