@@ -16,8 +16,8 @@ Loop 8 {
 	main.Gui("Add", "Text", "w300 Center", "Item " A_Index)
 }
 */
-main.Child := new _Cgui(main, "+Border +Parent" main._hwnd)
-main.Child.Show("w150 h150 x0 y0")
+;main.Child := new _Cgui(main, "+Border +Parent" main._hwnd)
+;main.Child.Show("w150 h150 x0 y0")
 
 return
 Esc::
@@ -55,9 +55,7 @@ class _CGui extends _CGuiBase {
 		this._RegisterMessage(WM_VSCROLL,this._OnScroll)
 		
 		; Register for move message.
-		; ToDo, why does base class not get Move messages?
 		this._RegisterMessage(WM_MOVE,this._OnMove)
-
 	}
 
 	__Destroy(){
@@ -120,20 +118,34 @@ class _CGui extends _CGuiBase {
 	}
 	
 	_OnMove(wParam, lParam, msg, hwnd){
+		;SoundBeep
 		; ToDo:
 		; Store _WindowRECT on object?
 		; OnMove for base class sets window position in INI
 		; We need outer rect (client area plus "chrome") of THIS window relatice to PARENT windows INNER rect.
 		; lParam x/y coords are relative to outer rect
 		WinGetPos, X, Y, Width, Height, % "ahk_id " this._hwnd
-		
-		POINT := this._DLL_ScreenToClient(this._parent._hwnd,x,y)
-		
-		;tooltip % y
-		if ( (height + POINT.y) > this._parent._PageRECT.Bottom || (Width + POINT.x) > this._parent._PageRECT.Right ){
-			; Only checks bottom right, check top left too
-			SoundBeep
+		if (!this._parent){
+			; Root window - _WindowRECT is coords relative to SCREEN.
+			this._WindowRECT := new this.RECT({Left: x, Top: y, Right: x + Width, Bottom: y + height})
+			;tooltip % this._WindowRECT.Top
+		} else {
+			; Child window - _WindowRECT is OUTER coords (including chrome) relative to PARENT.
+			this._WindowRECT := new this.RECT({Left: x, Top: y, Right: x + Width, Bottom: y + height})
+			;tooltip % this._WindowRECT.Top
+			
+			;lpy := lParam & 0xffff
+			;lpx := lParam >> 16	
+			;ToolTip % lpx "," lpy
+			POINT := this._DLL_ScreenToClient(this._parent._hwnd,x,y)
+			
+			;tooltip % y
+			if ( (height + POINT.y) > this._parent._PageRECT.Bottom || (Width + POINT.x) > this._parent._PageRECT.Right ){
+				; Only checks bottom right, check top left too
+				;SoundBeep
+			}
 		}
+
 	
 	}
 
