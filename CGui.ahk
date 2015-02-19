@@ -16,8 +16,8 @@ Loop 8 {
 	main.Gui("Add", "Text", "w300 Center", "Item " A_Index)
 }
 */
-;main.Child := new _Cgui(main, "+Border +Parent" main._hwnd)
-;main.Child.Show("w150 h150 x0 y0")
+main.Child := new _Cgui(main, "+Border +Parent" main._hwnd)
+main.Child.Show("w150 h150 x0 y0")
 
 return
 Esc::
@@ -117,13 +117,14 @@ class _CGui extends _CGuiBase {
 		}
 	}
 	
+	; Called when a GUI Moves.
+	; If the GUI moves outside it's parent's RECT, enlarge the parent's RANGE
 	_OnMove(wParam, lParam, msg, hwnd){
 		;SoundBeep
 		; ToDo:
-		; Store _WindowRECT on object?
 		; OnMove for base class sets window position in INI
-		; We need outer rect (client area plus "chrome") of THIS window relatice to PARENT windows INNER rect.
-		; lParam x/y coords are relative to outer rect
+		; lParam x/y coords are relative to parent's outer rect - seem pretty useless.
+		; WinGetPos gets coordinates relative to SCREEN.
 		WinGetPos, X, Y, Width, Height, % "ahk_id " this._hwnd
 		if (!this._parent){
 			; Root window - _WindowRECT is coords relative to SCREEN.
@@ -131,18 +132,16 @@ class _CGui extends _CGuiBase {
 			;tooltip % this._WindowRECT.Top
 		} else {
 			; Child window - _WindowRECT is OUTER coords (including chrome) relative to PARENT.
-			this._WindowRECT := new this.RECT({Left: x, Top: y, Right: x + Width, Bottom: y + height})
-			;tooltip % this._WindowRECT.Top
-			
-			;lpy := lParam & 0xffff
-			;lpx := lParam >> 16	
-			;ToolTip % lpx "," lpy
+			;tooltip % "Top: " POINT.y ", Left: " POINT.X ", Bottom: " height + POINT.y ", Right: " Width + POINT.x
 			POINT := this._DLL_ScreenToClient(this._parent._hwnd,x,y)
-			
-			;tooltip % y
-			if ( (height + POINT.y) > this._parent._PageRECT.Bottom || (Width + POINT.x) > this._parent._PageRECT.Right ){
-				; Only checks bottom right, check top left too
-				;SoundBeep
+			; Set _WindowRECT to OUTER coords, relative to the parent's INNER (client area) RECT.
+			this._WindowRECT := new this.RECT({Left: POINT.x, Top: POINT.y, Right: POINT.x + Width, Bottom: POINT.y + height})
+			; Enlarge Parent's RANGE if needed.
+			if (!this._parent._PageRECT.contains(this._WindowRECT)){
+				if (this._parent._RangeRECT.Union(this._WindowRECT)){
+					; Union returns true if it enlarged the parent's RANGE
+					this._parent._GuiSetScrollbarSize()
+				}
 			}
 		}
 
