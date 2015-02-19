@@ -1,3 +1,4 @@
+; REQUIRES AHK TEST BUILD from HERE: http://ahkscript.org/boards/viewtopic.php?f=24&t=5802
 ; DEPENDENCIES:
 ; _Struct():  https://raw.githubusercontent.com/HotKeyIt/_Struct/master/_Struct.ahk - docs: http://www.autohotkey.net/~HotKeyIt/AutoHotkey/_Struct.htm
 ; sizeof(): https://raw.githubusercontent.com/HotKeyIt/_Struct/master/sizeof.ahk - docs: http://www.autohotkey.net/~HotKeyIt/AutoHotkey/sizeof.htm
@@ -21,9 +22,13 @@ GuiClose:
 	ExitApp
 
 class _CGui extends _CGuiBase {
+	; ScrollInfo array - Declared as associative, but consider 0-based indexed. 0-based so SB_HORZ / SB_VERT map to correct elements.
+	_ScrollInfos := {0: 0, 1: 0}
 	; ========================================== GUI COMMAND WRAPPERS =============================
 	__New(options := 0){
+		Static SB_HORZ := 0, SB_VERT = 1
 		static WM_SIZE := 0x0005
+		static WM_HSCROLL := 0x0114, WM_VSCROLL := 0x0115
 		
 		Gui, new, % "hwndhwnd " options
 		this._hwnd := hwnd
@@ -31,8 +36,14 @@ class _CGui extends _CGuiBase {
 		; Set Range to size of Page to start off with.
 		this._RangeRECT := this._GuiPageGetRect()
 		
+		; Initialize scroll info array
+		this._ScrollInfos := {0: this._GetScrollInfo(SB_HORZ), 1: this._GetScrollInfo(SB_VERT)}
+		
 		; Register for ReSize messages
 		this._RegisterMessage(WM_SIZE,this._OnSize)
+		this._RegisterMessage(WM_HSCROLL,this._OnScroll)
+		this._RegisterMessage(WM_VSCROLL,this._OnScroll)
+
 	}
 
 	__Destroy(){
@@ -71,7 +82,7 @@ class _CGui extends _CGuiBase {
 	}
 
 	; Adjust this._PageRECT when Gui Size Changes (ie it was Resized)
-	_OnSize(wParm, lParm, msg, hwnd){
+	_OnSize(wParam, lParam, msg, hwnd){
 		; ToDo: Need to check if hwnd matches this._hwnd ?
 		this._PageRECT := this._GuiPageGetRect()
 		this._GuiSetScrollbarSize()
@@ -79,6 +90,20 @@ class _CGui extends _CGuiBase {
 
 	; ========================================== SCROLL BARS ======================================
 
+	_GuiSetScrollbarPos(nTrackPos, bars := 2){
+		Static SB_HORZ := 0, SB_VERT = 1
+		static SIF_POS := 0x4
+		
+		Loop 2 {
+			bar := A_Index - 1
+			if ( ( bar=0 && (bars = 0 || bars = 2) )   ||  ( bar=1 && (bars = 0 || bars = 2) ) ){
+				this._ScrollInfos[bar].fMask := SIF_POS
+				this._ScrollInfos[bar].nPos := nTrackPos
+				this._DLL_SetScrollInfo(SB_HORZ, this._ScrollInfos[bar])
+			}
+		}
+	}
+	
 	; Set the SIZE component(s) of a scrollbar - PAGE and RANGE
 	_GuiSetScrollbarSize(bar := 2, PageRECT := 0, RangeRECT := 0, mode := "b"){
 		Static SB_HORZ := 0, SB_VERT = 1
@@ -148,9 +173,41 @@ class _CGui extends _CGuiBase {
 		return lpsi
 	}
 
+	_GetScrollInfo(fnBar, hwnd := 0){
+		static SIF_ALL := 0x17
+		if (hwnd = 0){
+			; Normal use - operate on youurself. Passed hwnd = inspect another window
+			hwnd := this._hwnd
+		}
+		; https://msdn.microsoft.com/en-us/library/windows/desktop/bb787583%28v=vs.85%29.aspx
+		lpsi := this._BlankScrollInfo()
+		lpsi.fMask := SIF_ALL
+		r := DllCall("User32.dll\GetScrollInfo", "Ptr", hwnd, "Int", fnBar, "Ptr", lpsi[], "UInt")
+		return lpsi
+		;Return r
+	}
+
+	_OnScroll(wParam, lParam, msg, hwnd){
+		Static SB_HORZ := 0, SB_VERT = 1
+
+		SI := this._GetScrollInfo(SB_VERT)
+		
+		;this._GuiSetScrollbarPos(SB_VERT, SI.nTrackPos)
+		;ToolTip % "TrackPos: " SI.nTrackPos
+		
+	}
 
 	; ========================================== DLL CALLS ========================================
-	
+
+	_DLL_ScrollWindow(XAmount, YAmount, hwnd := 0){
+		; https://msdn.microsoft.com/en-us/library/windows/desktop/bb787591%28v=vs.85%29.aspx
+		if (!hwnd){
+			hwnd := this._hwnd
+		}
+		;tooltip % "Scrolling " hwnd
+		return DllCall("User32.dll\ScrollWindow", "Ptr", hwnd, "Int", XAmount, "Int", YAmount, "Ptr", 0, "Ptr", 0)
+	}
+
 	; Wraps GetClientRect() Dll call, returns RECT class (Not Structure! Class!)
 	_DLL_GetClientRect(hwnd := 0){
 		if (hwnd = 0){
@@ -170,6 +227,21 @@ class _CGui extends _CGuiBase {
 			hwnd := this._hwnd
 		}
 		return DllCall("User32.dll\SetScrollInfo", "Ptr", hwnd, "Int", fnBar, "Ptr", lpsi[], "UInt", fRedraw, "UInt")
+	}
+
+	;_DLL_GetScrollInfo(fnBar, ByRef lpsi, hwnd := 0){
+	_DLL_GetScrollInfo(fnBar, hwnd := 0){
+		; https://msdn.microsoft.com/en-us/library/windows/desktop/bb787583%28v=vs.85%29.aspx
+		static SIF_ALL := 0x17
+		if (hwnd = 0){
+			; Normal use - operate on youurself. Passed hwnd = inspect another window
+			hwnd := this._hwnd
+		}
+		lpsi := this._BlankScrollInfo()
+		lpsi.fMask := SIF_ALL
+		r := DllCall("User32.dll\GetScrollInfo", "Ptr", hwnd, "Int", fnBar, "Ptr", lpsi[], "UInt")
+		return lpsi
+		;Return r
 	}
 
 	; ========================================== MESSAGES =========================================
