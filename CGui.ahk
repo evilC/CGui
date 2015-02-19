@@ -110,10 +110,12 @@ class _CGui extends _CGuiBase {
 		if (wParam = SIZE_RESTORED || wParam = SIZE_MAXIMIZED){
 			;this._PageRECT := this._GuiPageGetRect()
 			this._GuiSetScrollbarSize()
-		
+			
+			; This code should be in _GuiSetScrollbarSize vvvvv
 			Loop 2 {
 				bar := A_Index - 1
-				if (this._ScrollInfos[bar].nPos){
+				if (this._ScrollInfos[bar].nPage <= this._ScrollInfos[bar].nMax){
+					; If we need scrollbars
 					diff := this._IsScrollBarAtMaximum(bar)
 					if (bar) {
 						h := 0
@@ -130,6 +132,9 @@ class _CGui extends _CGuiBase {
 							this._ScrollInfos[bar].nPos	-= h
 						}
 					}
+				} else{
+					; Set this._HasScrollbars
+					; Should probably be outside loop
 				}
 			}
 		}
@@ -203,6 +208,9 @@ class _CGui extends _CGuiBase {
 					; Page bits set
 					this._ScrollInfos[bar].nPage := PageRECT[RECTProperties[bar].max]
 				}
+				;~ if (bar){
+					;~ ToolTip % "Min: " this._ScrollInfos[bar].nMin ", Max: " this._ScrollInfos[bar].nMax ", Page: " this._ScrollInfos[bar].nPage
+				;~ }
 				; ... Then update the Scrollbar.
 				this._DLL_SetScrollInfo(bar, this._ScrollInfos[bar])
 			}
