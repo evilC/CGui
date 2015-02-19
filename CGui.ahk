@@ -23,8 +23,6 @@ GuiClose:
 class _CGui extends _CGuiBase {
 	; ScrollInfo array - Declared as associative, but consider 0-based indexed. 0-based so SB_HORZ / SB_VERT map to correct elements.
 	_ScrollInfos := {0: 0, 1: 0}
-	; Whether scrollbars are currently active or not.
-	_HasScrollbars := {0: 0, 1: 0}
 	
 	; ========================================== GUI COMMAND WRAPPERS =============================
 	__New(options := 0){
@@ -35,10 +33,7 @@ class _CGui extends _CGuiBase {
 		Gui, new, % "hwndhwnd " options
 		this._hwnd := hwnd
 		
-		; Set Range to size of Page to start off with.
-		;this._RangeRECT := this._GuiPageGetRect()
-		;this._PageRECT := this._RangeRECT
-		; Initialize page and range to 0 - gui does not have size until child added or Show.
+		; Initialize page and range classes so that all values read 0
 		this._RangeRECT := new this.RECT()
 		this._PageRECT := new this.RECT()
 		
@@ -47,6 +42,8 @@ class _CGui extends _CGuiBase {
 		
 		; Register for ReSize messages
 		this._RegisterMessage(WM_SIZE,this._OnSize)
+		
+		; Register for scroll (drag of thumb) messages
 		this._RegisterMessage(WM_HSCROLL,this._OnScroll)
 		this._RegisterMessage(WM_VSCROLL,this._OnScroll)
 
@@ -96,52 +93,23 @@ class _CGui extends _CGuiBase {
 		; ToDo: Need to check if hwnd matches this._hwnd ?
 		static SIZE_RESTORED := 0, SIZE_MINIMIZED := 1, SIZE_MAXIMIZED := 2, SIZE_MAXSHOW := 3, SIZE_MAXHIDE := 4
 		
-		w := lParam & 0xffff
-		h := lParam >> 16
-		if (w != this._PageRECT.Right || h != this._PageRECT.Bottom){
-			; resize
-			;SoundBeep
-			;MsgBox % "new: " lParam & 0xffff ", " lParam >> 16 " != old: " this._PageRECT.Right ", " this._PageRECT.Bottom " !"
-			this._PageRECT.Right := w
-			this._PageRECT.Bottom := h
-		}
-
-		; Check if size changed
 		if (wParam = SIZE_RESTORED || wParam = SIZE_MAXIMIZED){
-			;this._PageRECT := this._GuiPageGetRect()
-			this._GuiSetScrollbarSize()
-			
-			; This code should be in _GuiSetScrollbarSize vvvvv
-			Loop 2 {
-				bar := A_Index - 1
-				if (this._ScrollInfos[bar].nPage <= this._ScrollInfos[bar].nMax){
-					; If we need scrollbars
-					diff := this._IsScrollBarAtMaximum(bar)
-					if (bar) {
-						h := 0
-						v := diff
-					} else {
-						h := diff
-						v := 0
-					}
-					if (diff > 0){
-						this._DLL_ScrollWindow(h,v)
-						if (bar){
-							this._ScrollInfos[bar].nPos -= v
-						} else {
-							this._ScrollInfos[bar].nPos	-= h
-						}
-					}
-				} else{
-					; Set this._HasScrollbars
-					; Should probably be outside loop
-				}
+			w := lParam & 0xffff
+			h := lParam >> 16
+			if (w != this._PageRECT.Right || h != this._PageRECT.Bottom){
+				; Gui Size Changed - update PAGERECT
+				this._PageRECT.Right := w
+				this._PageRECT.Bottom := h
 			}
+			
+			; Adjust Scrollbars if required
+			this._GuiSetScrollbarSize()
 		}
 	}
 
 	; ========================================== SCROLL BARS ======================================
 
+	; Is the scrollbar at maximum? (ie all the way at the end).
 	_IsScrollBarAtMaximum(bar){
 		end := this._ScrollInfos[bar].nPos + this._ScrollInfos[bar].nPage
 		diff := ( this._ScrollInfos[bar].nMax - end ) * -1
@@ -152,6 +120,7 @@ class _CGui extends _CGuiBase {
 		}
 	}
 	
+	; Set the POSITION component of a scrollbar
 	_GuiSetScrollbarPos(nTrackPos, bar){
 		Static SB_HORZ := 0, SB_VERT = 1
 		static SIF_POS := 0x4
@@ -162,6 +131,9 @@ class _CGui extends _CGuiBase {
 	}
 	
 	; Set the SIZE component(s) of a scrollbar - PAGE and RANGE
+	; bars = 0 = SB_HORZ
+	; bars = 1 = SB_VERT
+	; bars = 2 (or omit bars) = both bars
 	_GuiSetScrollbarSize(bars := 2, PageRECT := 0, RangeRECT := 0, mode := "b"){
 		Static SB_HORZ := 0, SB_VERT = 1
 		static SIF_DISABLENOSCROLL := 0x8
@@ -213,6 +185,33 @@ class _CGui extends _CGuiBase {
 				;~ }
 				; ... Then update the Scrollbar.
 				this._DLL_SetScrollInfo(bar, this._ScrollInfos[bar])
+			}
+			
+			; If a vertical scrollbar is showing, and you are scrolled all the way to the bottom of the page...
+			; ... If you grab the bottom edge of the window and size up, the contents must scroll downwards.
+			; I call this a Size-Scroll.
+			if (this._ScrollInfos[bar].nPage <= this._ScrollInfos[bar].nMax){
+				; Page (Size of window) is less than Max (Size of contents) - scrollbars will be showing.
+				diff := this._IsScrollBarAtMaximum(bar)
+				
+				if (diff > 0){
+					; diff is positive, Size-Scroll required
+					; Set up vars for call
+					if (bar) {
+						h := 0
+						v := diff
+					} else {
+						h := diff
+						v := 0
+					}
+					; Size-Scroll the contents.
+					this._DLL_ScrollWindow(h,v)
+					if (bar){
+						this._ScrollInfos[bar].nPos -= v
+					} else {
+						this._ScrollInfos[bar].nPos	-= h
+					}
+				}
 			}
 		}
 	}
