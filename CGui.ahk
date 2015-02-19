@@ -13,7 +13,7 @@ main.Show("w200 h100 y0")
 
 
 Loop 8 {
-	main.Gui("Add", "Text", "w300", "Item " A_Index)
+	main.Gui("Add", "Text", "w500", "Item " A_Index)
 }
 
 return
@@ -90,18 +90,13 @@ class _CGui extends _CGuiBase {
 
 	; ========================================== SCROLL BARS ======================================
 
-	_GuiSetScrollbarPos(nTrackPos, bars := 2){
+	_GuiSetScrollbarPos(nTrackPos, bar){
 		Static SB_HORZ := 0, SB_VERT = 1
 		static SIF_POS := 0x4
 		
-		Loop 2 {
-			bar := A_Index - 1
-			if ( ( bar=0 && (bars = 0 || bars = 2) )   ||  ( bar=1 && bars > 0 ) ){
-				this._ScrollInfos[bar].fMask := SIF_POS
-				this._ScrollInfos[bar].nPos := nTrackPos
-				this._DLL_SetScrollInfo(bar, this._ScrollInfos[bar])
-			}
-		}
+		this._ScrollInfos[bar].fMask := SIF_POS
+		this._ScrollInfos[bar].nPos := nTrackPos
+		this._DLL_SetScrollInfo(bar, this._ScrollInfos[bar])
 	}
 	
 	; Set the SIZE component(s) of a scrollbar - PAGE and RANGE
@@ -185,33 +180,37 @@ class _CGui extends _CGuiBase {
 		static SB_LINEUP := 0x0, SB_LINEDOWN := 0x1, SB_PAGEUP := 0x2, SB_PAGEDOWN := 0x3, SB_THUMBPOSITION := 0x4, SB_THUMBTRACK := 0x5, SB_TOP := 0x6, SB_BOTTOM := 0x7, SB_ENDSCROLL := 0x8 
 		
 		if (msg = WM_HSCROLL || msg = WM_VSCROLL){
-			msg -= 0x114
+			bar := msg - 0x114
 		} else {
 			;SoundBeep
 			return
 		}
-		SI := this._GetScrollInfo(msg)
+		ScrollInfo := this._GetScrollInfo(bar)
+		OutputDebug, % "SI: " ScrollInfo.nTrackPos ", Bar: " bar
 
-		if (wParam = 0x5){
+		if (wParam = SB_THUMBTRACK){
+			;SoundBeep
 		} else if (wParam = SB_ENDSCROLL){
 			; Scrollbar drag ended
-			this._GuiSetScrollbarPos(SI[msg].nTrackPos, msg)
+			this._GuiSetScrollbarPos(ScrollInfo.nTrackPos, bar)
 		} else if (wParam <= SB_ENDSCROLL) {
 			; Is an unimplemented flag
 			SoundBeep, 100, 100
+			
 		} else {
 			; Drag of scrollbar
-			if (msg){
+			if (bar){
 				; Vertical Bar
 				h := 0
-				v := (SI.nTrackPos - this._ScrollInfos[msg].nPos) * -1
+				v := (ScrollInfo.nTrackPos - this._ScrollInfos[bar].nPos) * -1
 			} else {
 				; Horiz Bar
-				h := (SI.nTrackPos - this._ScrollInfos[msg].nPos) * -1
+				h := (ScrollInfo.nTrackPos - this._ScrollInfos[bar].nPos) * -1
 				v := 0
 			}
+			;OutputDebug, % "[ " this._FormatHwnd() " ] " this._FormatFuncName(A_ThisFunc) "   Scrolling window by (x,y) " h ", " v
 			this._DLL_ScrollWindow(h, v)
-			this._ScrollInfos[msg].nPos := SI[msg].nTrackPos
+			this._ScrollInfos[bar].nPos := ScrollInfo.nTrackPos
 		}
 	}
 
@@ -391,6 +390,31 @@ class _CGuiBase {
 			return Expanded
 		}
 	}
+
+	FormatHex(val){
+		return Format("{:#x}", val+0)
+	}
+	
+	; Human readable hwnd, or padded number if not set
+	_FormatHwnd(hwnd := -1){
+		if (hwnd = -1){
+			hwnd := this._hwnd
+		}
+		if (!hwnd){
+			return 0x000000
+		} else {
+			return hwnd
+		}
+	}
+	
+	_FormatFuncName(func){
+		static max := 25
+		if (StrLen(func) > max){
+			func := Substr(func, 1, max)
+		}
+		return Format("{:-" max "s}",func)
+	}
+
 }
 
 ; Functions that will be part of AHK at some point ================================================================================================
