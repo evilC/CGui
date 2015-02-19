@@ -13,8 +13,7 @@ main.Show("w200 h100 y0")
 
 
 Loop 8 {
-	main.Gui("Add", "Text", , "Item " A_Index)
-	;main.Gui("Add", "Text", "w300", "Item " A_Index)
+	main.Gui("Add", "Text", "w300", "Item " A_Index)
 }
 
 return
@@ -299,7 +298,7 @@ class _CGui extends _CGuiBase {
 	class _CGuiControl extends _CGuiBase {
 		__New(parent, ctrltype, options := "", text := ""){
 			this._parent := parent
-			Gui, % this._parent.GuiCmd("Add"), % ctrltype, % "hwndhwnd" options, % text
+			Gui, % this._parent.GuiCmd("Add"), % ctrltype, % "hwndhwnd " options, % text
 			this._hwnd := hwnd
 			GuiControlGet, Pos, % this._parent._hwnd ":Pos", % this._hwnd
 			this._PageRECT := new this.RECT({Top: PosY, Left: PosX, Bottom: PosY + PosH, Right: PosX + PosW})
