@@ -23,6 +23,9 @@ GuiClose:
 class _CGui extends _CGuiBase {
 	; ScrollInfo array - Declared as associative, but consider 0-based indexed. 0-based so SB_HORZ / SB_VERT map to correct elements.
 	_ScrollInfos := {0: 0, 1: 0}
+	; Whether scrollbars are currently active or not.
+	_HasScrollbars := {0: 0, 1: 0}
+	
 	; ========================================== GUI COMMAND WRAPPERS =============================
 	__New(options := 0){
 		Static SB_HORZ := 0, SB_VERT = 1
@@ -111,9 +114,7 @@ class _CGui extends _CGuiBase {
 			Loop 2 {
 				bar := A_Index - 1
 				if (this._ScrollInfos[bar].nPos){
-					end := this._ScrollInfos[bar].nPos + this._ScrollInfos[bar].nPage
-					diff := this._ScrollInfos[bar].nMax - end
-					diff *= -1
+					diff := this._IsScrollBarAtMaximum(bar)
 					if (bar) {
 						h := 0
 						v := diff
@@ -136,6 +137,16 @@ class _CGui extends _CGuiBase {
 
 	; ========================================== SCROLL BARS ======================================
 
+	_IsScrollBarAtMaximum(bar){
+		end := this._ScrollInfos[bar].nPos + this._ScrollInfos[bar].nPage
+		diff := ( this._ScrollInfos[bar].nMax - end ) * -1
+		if (diff > 0){
+			return diff
+		} else {
+			return 0
+		}
+	}
+	
 	_GuiSetScrollbarPos(nTrackPos, bar){
 		Static SB_HORZ := 0, SB_VERT = 1
 		static SIF_POS := 0x4
