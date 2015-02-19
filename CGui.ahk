@@ -423,7 +423,7 @@ class _CGuiBase {
 			
 			if (aParam = ""){
 				; Blank param passed via [""] - pass back RECT Structure
-				return this.RECT
+				return this.RECT[] := aValue
 			}
 			
 			if (ObjHasKey(keys, aParam)){
