@@ -9,11 +9,12 @@
 #include <WinStructs>
 
 main := new _CGui("+Resize")
-main.Show("w200 h200 y0")
+main.Show("w200 h100 y0")
 
 
 Loop 8 {
-	main.Gui("Add", "Text",,"Item " A_Index)
+	main.Gui("Add", "Text", , "Item " A_Index)
+	;main.Gui("Add", "Text", "w300", "Item " A_Index)
 }
 
 return
@@ -71,7 +72,7 @@ class _CGui extends _CGuiBase {
 
 	; The RANGE (Size of contents) of a GUI / GuiControl changed (Most GuiControls would not have a Range, just a page)
 	_GuiRangeChanged(){
-		SoundBeep
+		;SoundBeep
 		this._GuiSetScrollbarSize()
 	}
 	
@@ -96,7 +97,7 @@ class _CGui extends _CGuiBase {
 		
 		Loop 2 {
 			bar := A_Index - 1
-			if ( ( bar=0 && (bars = 0 || bars = 2) )   ||  ( bar=1 && (bars = 0 || bars = 2) ) ){
+			if ( ( bar=0 && (bars = 0 || bars = 2) )   ||  ( bar=1 && bars > 0 ) ){
 				this._ScrollInfos[bar].fMask := SIF_POS
 				this._ScrollInfos[bar].nPos := nTrackPos
 				this._DLL_SetScrollInfo(bar, this._ScrollInfos[bar])
@@ -182,27 +183,37 @@ class _CGui extends _CGuiBase {
 		Critical
 		static WM_HSCROLL := 0x0114, WM_VSCROLL := 0x0115
 		Static SB_HORZ := 0, SB_VERT = 1
+		static SB_LINEUP := 0x0, SB_LINEDOWN := 0x1, SB_PAGEUP := 0x2, SB_PAGEDOWN := 0x3, SB_THUMBPOSITION := 0x4, SB_THUMBTRACK := 0x5, SB_TOP := 0x6, SB_BOTTOM := 0x7, SB_ENDSCROLL := 0x8 
 		
 		if (msg = WM_HSCROLL || msg = WM_VSCROLL){
 			msg -= 0x114
 		} else {
+			;SoundBeep
 			return
 		}
-
 		SI := this._GetScrollInfo(msg)
-		ToolTip % "Current Pos: " this._ScrollInfos[msg].nPos "`nThumb Pos: " SI[msg].nTrackPos
-		if (msg){
-			; Vertical Bar
-			h := 0
-			v := (SI.nTrackPos - this._ScrollInfos[msg].nPos) * -1
+
+		if (wParam = 0x5){
+		} else if (wParam = SB_ENDSCROLL){
+			; Scrollbar drag ended
+			this._GuiSetScrollbarPos(SI[msg].nTrackPos, msg)
+		} else if (wParam <= SB_ENDSCROLL) {
+			; Is an unimplemented flag
+			SoundBeep, 100, 100
 		} else {
-			; Horiz Bar
-			h := (SI.nTrackPos - this._ScrollInfos[msg].nPos) * -1
-			v := 0
+			; Drag of scrollbar
+			if (msg){
+				; Vertical Bar
+				h := 0
+				v := (SI.nTrackPos - this._ScrollInfos[msg].nPos) * -1
+			} else {
+				; Horiz Bar
+				h := (SI.nTrackPos - this._ScrollInfos[msg].nPos) * -1
+				v := 0
+			}
+			this._DLL_ScrollWindow(h, v)
+			this._ScrollInfos[msg].nPos := SI[msg].nTrackPos
 		}
-		this._DLL_ScrollWindow(h, v)
-		this._ScrollInfos[msg].nPos := SI[msg].nTrackPos
-		
 	}
 
 	; ========================================== DLL CALLS ========================================
