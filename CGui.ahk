@@ -11,11 +11,11 @@
 main := new _CGui(0,"+Resize")
 main.Show("w200 h200 y0", "CGui Demo")
 
-/*
-Loop 8 {
-	main.Gui("Add", "Text", "w300 Center", "Item " A_Index)
-}
-*/
+
+;~ Loop 8 {
+	;~ main.Gui("Add", "Text", "w300 Center", "Item " A_Index)
+;~ }
+
 main.Child := new _Cgui(main, "+Border +Parent" main._hwnd)
 main.Child.Show("w150 h150 x0 y0")
 
@@ -137,8 +137,16 @@ class _CGui extends _CGuiBase {
 			; Set _WindowRECT to OUTER coords, relative to the parent's INNER (client area) RECT.
 			this._WindowRECT := new this.RECT({Left: POINT.x, Top: POINT.y, Right: POINT.x + Width, Bottom: POINT.y + height})
 			; Enlarge Parent's RANGE if needed.
-			if (!this._parent._PageRECT.contains(this._WindowRECT)){
+			if (this._parent._PageRECT.contains(this._WindowRECT)){
+				; Window Bounds are inside parent's PAGE
+
+				tooltip % "Range B: "  this._parent._RangeRECT.Bottom ", R: " this._parent._RangeRECT.Right ", Bottom: " height + POINT.y ", Right: " Width + POINT.x
+				;if (this._parent._RangeRECT.contains(this._WindowRECT)){
+				;}
+			} else {
+				; Window Bounds fall outside parent's PAGE.
 				if (this._parent._RangeRECT.Union(this._WindowRECT)){
+					;SoundBeep
 					; Union returns true if it enlarged the parent's RANGE
 					this._parent._GuiSetScrollbarSize()
 				}
