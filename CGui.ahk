@@ -7,9 +7,10 @@
 
 #include <_Struct>
 #include <WinStructs>
+;#include *i <SkinSharp>
 
 main := new _CGui("+Resize")
-main.Show("w200 h100 y0")
+main.Show("w200 h100 y0", "CGui Demo")
 
 Loop 8 {
 	main.Gui("Add", "Text", "w300 Center", "Item " A_Index)
@@ -20,11 +21,13 @@ Esc::
 GuiClose:
 	ExitApp
 
+; Wraps All Gui commands - Guis and GuiControls
 class _CGui extends _CGuiBase {
 	; ScrollInfo array - Declared as associative, but consider 0-based indexed. 0-based so SB_HORZ / SB_VERT map to correct elements.
 	_ScrollInfos := {0: 0, 1: 0}
 	
 	; ========================================== GUI COMMAND WRAPPERS =============================
+	; Equivalent to Gui, New
 	__New(options := 0){
 		Static SB_HORZ := 0, SB_VERT = 1
 		static WM_SIZE := 0x0005
@@ -38,7 +41,7 @@ class _CGui extends _CGuiBase {
 		this._PageRECT := new this.RECT()
 		
 		; Initialize scroll info array
-		this._ScrollInfos := {0: this._GetScrollInfo(SB_HORZ), 1: this._GetScrollInfo(SB_VERT)}
+		this._ScrollInfos := {0: this._DLL_GetScrollInfo(SB_HORZ), 1: this._DLL_GetScrollInfo(SB_VERT)}
 		
 		; Register for ReSize messages
 		this._RegisterMessage(WM_SIZE,this._OnSize)
@@ -55,8 +58,14 @@ class _CGui extends _CGuiBase {
 		; Same for Gui, Hide?
 	}
 	
-	Show(options){
-		Gui, % this._hwnd ":Show", % options
+	; Simple patch to prefix Gui commands with HWND
+	PrefixHwnd(cmd){
+		return this._hwnd ":" cmd
+	}
+
+	; Equivalent to Gui, Show
+	Show(options := "", title := ""){
+		Gui, % this.PrefixHwnd("Show"), % options, % title
 	}
  
 	; Wrapper for Gui commands
@@ -72,12 +81,6 @@ class _CGui extends _CGuiBase {
 
 	; ========================================== DIMENSIONS =======================================
 
-	; The RANGE (Size of contents) of a GUI / GuiControl changed (Most GuiControls would not have a Range, just a page)
-	_GuiRangeChanged(){
-		;SoundBeep
-		this._GuiSetScrollbarSize()
-	}
-	
 	/*
 	; The PAGE (Size of window) of a Gui / GuiControl changed. For GuiControls, this is the size of the control
 	_GuiPageGetRect(){
@@ -180,9 +183,6 @@ class _CGui extends _CGuiBase {
 					; Page bits set
 					this._ScrollInfos[bar].nPage := PageRECT[RECTProperties[bar].max]
 				}
-				;~ if (bar){
-					;~ ToolTip % "Min: " this._ScrollInfos[bar].nMin ", Max: " this._ScrollInfos[bar].nMax ", Page: " this._ScrollInfos[bar].nPage
-				;~ }
 				; ... Then update the Scrollbar.
 				this._DLL_SetScrollInfo(bar, this._ScrollInfos[bar])
 			}
@@ -223,20 +223,6 @@ class _CGui extends _CGuiBase {
 		return lpsi
 	}
 
-	_GetScrollInfo(fnBar, hwnd := 0){
-		static SIF_ALL := 0x17
-		if (hwnd = 0){
-			; Normal use - operate on youurself. Passed hwnd = inspect another window
-			hwnd := this._hwnd
-		}
-		; https://msdn.microsoft.com/en-us/library/windows/desktop/bb787583%28v=vs.85%29.aspx
-		lpsi := this._BlankScrollInfo()
-		lpsi.fMask := SIF_ALL
-		r := DllCall("User32.dll\GetScrollInfo", "Ptr", hwnd, "Int", fnBar, "Ptr", lpsi[], "UInt")
-		return lpsi
-		;Return r
-	}
-
 	; A scrollbar was dragged
 	_OnScroll(wParam, lParam, msg, hwnd){
 		; Handles:
@@ -253,7 +239,7 @@ class _CGui extends _CGuiBase {
 			;SoundBeep
 			return
 		}
-		ScrollInfo := this._GetScrollInfo(bar)
+		ScrollInfo := this._DLL_GetScrollInfo(bar)
 		;OutputDebug, % "SI: " ScrollInfo.nTrackPos ", Bar: " bar
 
 		if (wParam = SB_LINEUP || wParam = SB_LINEDOWN){
@@ -291,7 +277,7 @@ class _CGui extends _CGuiBase {
 				h := (ScrollInfo.nTrackPos - this._ScrollInfos[bar].nPos) * -1
 				v := 0
 			}
-			;OutputDebug, % "[ " this._FormatHwnd() " ] " this._FormatFuncName(A_ThisFunc) "   Scrolling window by (x,y) " h ", " v " - new Pos: " this._ScrollInfos[bar].nPos
+			;OutputDebug, % "[ " this._FormatHwnd() " ] " this._SetStrLen(A_ThisFunc) "   Scrolling window by (x,y) " h ", " v " - new Pos: " this._ScrollInfos[bar].nPos
 			this._DLL_ScrollWindow(h, v)
 			this._ScrollInfos[bar].nPos := ScrollInfo.nTrackPos
 			this._GuiSetScrollbarPos(ScrollInfo.nTrackPos, bar)
@@ -300,6 +286,7 @@ class _CGui extends _CGuiBase {
 
 	; ========================================== DLL CALLS ========================================
 
+	; Wraps ScrollWindow() DLL Call.
 	_DLL_ScrollWindow(XAmount, YAmount, hwnd := 0){
 		; https://msdn.microsoft.com/en-us/library/windows/desktop/bb787591%28v=vs.85%29.aspx
 		if (!hwnd){
@@ -333,6 +320,7 @@ class _CGui extends _CGuiBase {
 	}
 
 	;_DLL_GetScrollInfo(fnBar, ByRef lpsi, hwnd := 0){
+	; returns a SCROLLINFO structure
 	_DLL_GetScrollInfo(fnBar, hwnd := 0){
 		; https://msdn.microsoft.com/en-us/library/windows/desktop/bb787583%28v=vs.85%29.aspx
 		static SIF_ALL := 0x17
@@ -381,15 +369,16 @@ class _CGui extends _CGuiBase {
 	
 	; Wraps GuiControls into an Object
 	class _CGuiControl extends _CGuiBase {
+		; Equivalent to Gui, Add
 		__New(parent, ctrltype, options := "", text := ""){
 			this._parent := parent
-			Gui, % this._parent.GuiCmd("Add"), % ctrltype, % "hwndhwnd " options, % text
+			Gui, % this._parent.PrefixHwnd("Add"), % ctrltype, % "hwndhwnd " options, % text
 			this._hwnd := hwnd
 			GuiControlGet, Pos, % this._parent._hwnd ":Pos", % this._hwnd
 			this._PageRECT := new this.RECT({Top: PosY, Left: PosX, Bottom: PosY + PosH, Right: PosX + PosW})
 			if (!this._parent._PageRECT.contains(this._PageRECT)){
 				this._parent._RangeRECT.Union(this._PageRECT)
-				this._parent._GuiRangeChanged()
+				this._parent._GuiSetScrollbarSize()
 			}
 		}
 		
@@ -400,10 +389,6 @@ class _CGui extends _CGuiBase {
 		}
 	}
 
-	; Simple patch to prefix Gui commands with HWND
-	Guicmd(cmd){
-		return this._hwnd ":" cmd
-	}
 }
 
 ; A base class, purely for inheriting.
@@ -414,19 +399,22 @@ class _CGuiBase {
 	; https://msdn.microsoft.com/en-us/library/system.windows.rect(v=vs.110).aspx
 	class RECT {
 		__New(RECT := 0){
+			; Initialize RECT
 			if (RECT = 0){
 				RECT := {Top: 0, Bottom: 0, Left: 0, Right: 0}
 			}
+			; Create Structure
 			this.RECT := new _Struct(WinStructs.RECT, RECT)
 		}
 		
 		__Get(aParam := ""){
 			static keys := {Top: 1, Left: 1, Bottom: 1, Right: 1}
 			if (aParam = ""){
-				; Blank param passed via [""] - pass back RECT Structure
+				; Blank param passed via [] or [""] - pass back RECT Structure
 				return this.RECT[""]
 			}
 			if (ObjHasKey(keys, aParam)){
+				; Top / Left / Bottom / Right property requested - return property from Structure
 				return this.RECT[aParam]
 			}
 		}
@@ -438,10 +426,13 @@ class _CGuiBase {
 				; Blank param passed via [""] - pass back RECT Structure
 				return this.RECT
 			}
+			
 			if (ObjHasKey(keys, aParam)){
+				; Top / Left / Bottom / Right property specified - Set property of Structure
 				this.RECT[aParam] := aValue
 			}
 		}
+		; Syntax Sugar
 		
 		; Does this RECT contain the passed rect ?
 		Contains(RECT){
@@ -477,6 +468,7 @@ class _CGuiBase {
 		}
 	}
 
+	; Shorthand way of formatting something as 0x0 format Hex
 	FormatHex(val){
 		return Format("{:#x}", val+0)
 	}
@@ -493,8 +485,8 @@ class _CGuiBase {
 		}
 	}
 	
-	_FormatFuncName(func){
-		static max := 25
+	; Formats a String to a given length.
+	_SetStrLen(func, max := 25){
 		if (StrLen(func) > max){
 			func := Substr(func, 1, max)
 		}
