@@ -391,10 +391,10 @@ class _CGui extends _CGuiBase {
 	; Register a message with the Message handler.
 	_RegisterMessage(msg, callback){
 		newmessage := 0
-		if (!IsObject(_CGui._MessageArray)){
+		if (!ObjHasKey(_CGui, "_MessageArray")){
 			_Cgui._MessageArray := {}
 		}
-		if (!IsObject(_Gui._MessageArray[msg])){
+		if (!ObjHasKey(_CGui._MessageArray, msg)){
 			_CGui._MessageArray[msg] := {}
 			newmessage := 1
 		}
