@@ -21,6 +21,7 @@ A Class that you extend to allow you to turn a Gui or GuiControl into an object 
 * Example script demonstrating features
 
 ##How?
+(Please note, currently undergoing rewrite, syntax may not be same again yet...)
 #####Do I use it?
 * Include the script.
 * Derive any classes you wish to alter them.
