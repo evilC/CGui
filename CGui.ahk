@@ -11,6 +11,7 @@
 BorderState := 1
 
 main := new _CGui(0,"+Resize")
+main._DebugWindows := 1
 main.Show("w200 h200 y0", "CGui Demo")
 Menu, Menu1, Add, Border, ToggleBorder
 Gui, Menu, Menu1
@@ -38,6 +39,7 @@ UpdateDebug() {
 	str .= "Outer PAGE: `t`tT: " main._PageRECT.Top "`tL: " main._PageRECT.Left "`tB: " main._PageRECT.Bottom "`tR: " main._PageRECT.Right "`n"
 	str .= "Outer RANGE: `t`tT: " main._RangeRECT.Top "`tL: " main._RangeRECT.Left "`tB: " main._RangeRECT.Bottom "`tR: " main._RangeRECT.Right "`n`n"
 	str .= "Inner WINDOW: `tT: " main.Child._WindowRECT.Top "`tL: " main.Child._WindowRECT.Left "`tB: " main.Child._WindowRECT.Bottom "`tR: " main.Child._WindowRECT.Right "`n"
+	str .= "Inner PAGE: `t`tT: " main.Child._PageRECT.Top "`tL: " main.Child._PageRECT.Left "`tB: " main.Child._PageRECT.Bottom "`tR: " main.Child._PageRECT.Right "`n"
 	GuiControl, % hDebug ":", % hDebugOuter, % str
 	Sleep 100
 }
@@ -64,6 +66,7 @@ class _CGui extends _CGuiBase {
 	; ScrollInfo array - Declared as associative, but consider 0-based indexed. 0-based so SB_HORZ / SB_VERT map to correct elements.
 	_ScrollInfos := {0: 0, 1: 0}
 	
+	_DebugWindows := 0
 	; ========================================== GUI COMMAND WRAPPERS =============================
 	; Equivalent to Gui, New
 	__New(parent := 0, options := 0, aParams*){
@@ -91,7 +94,9 @@ class _CGui extends _CGuiBase {
 		
 		; Register for move message.
 		this._RegisterMessage(WM_MOVE,this._OnMove)
-		UpdateDebug()
+		if (this._DebugWindows){
+			UpdateDebug()
+		}
 	}
 
 	__Destroy(){
@@ -151,7 +156,9 @@ class _CGui extends _CGuiBase {
 			; Adjust Scrollbars if required
 			this._GuiSetScrollbarSize()
 		}
-		UpdateDebug()
+		if (this._DebugWindows){
+			UpdateDebug()
+		}
 	}
 	
 	; Called when a GUI Moves.
@@ -198,7 +205,9 @@ class _CGui extends _CGuiBase {
 			}
 		}
 
-		UpdateDebug()
+		if (this._DebugWindows){
+			UpdateDebug()
+		}
 	}
 
 	; ========================================== SCROLL BARS ======================================
@@ -373,7 +382,9 @@ class _CGui extends _CGuiBase {
 			this._ScrollInfos[bar].nPos := ScrollInfo.nTrackPos
 			this._GuiSetScrollbarPos(ScrollInfo.nTrackPos, bar)
 		}
-		UpdateDebug()
+		if (this._DebugWindows){
+			UpdateDebug()
+		}
 	}
 
 	; ========================================== DLL CALLS ========================================
@@ -490,7 +501,9 @@ class _CGui extends _CGuiBase {
 				this._parent._RangeRECT.Union(this._PageRECT)
 				this._parent._GuiSetScrollbarSize()
 			}
-			UpdateDebug()
+			if (this._DebugWindows){
+				UpdateDebug()
+			}
 		}
 		
 		__Destroy(){
