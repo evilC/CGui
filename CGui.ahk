@@ -91,7 +91,6 @@ class _CGui extends _CGuiBase {
 
 		Gui, new, % "hwndhwnd " options
 		this._hwnd := hwnd
-
 		; Initialize page and range classes so that all values read 0
 		this._RangeRECT := new this.RECT()
 		this._PageRECT := new this.RECT()
@@ -192,18 +191,18 @@ class _CGui extends _CGuiBase {
 	; OnMove seems to be called for a window when you scroll a window containing it.
 	_OnMove(wParam := 0, lParam := 0, msg := 0, hwnd := 0){
 		old := this._WindowRECT.clone()
-		this._GuiSetWindowRECT()
-		;ToolTip % old.Bottom ", " this._WindowRECT.Bottom
+		this._GuiSetWindowRECT(wParam, lParam, msg, hwnd)
+		;ToolTip % A_ThisFunc "`nOld: " this._SerializeRECT(old) "`nNew: " this._SerializeRECT(this._WindowRECT)
 		if (!this._WindowRECT.Equals(old)){
 			; ToDo: This is tripping when it should not.
-			this._parent._GuiChildChangedRange(this, old)
+			this._parent._GuiChildChangedRange(this, old, "_OnMove")
 		}
 		return
 	}
 
 	; A Child of this window changed it's usage of this window's RANGE (in other words, it moved or changed size)
 	; old = the Child's old WindowRECT
-	_GuiChildChangedRange(Child, old){
+	_GuiChildChangedRange(Child, old, from := ""){
 		static opposites := {top: "bottom", left: "right", bottom: "top", right: "left"}
 		;SoundBeep
 		;this._GuiSetWindowRECT()
@@ -211,8 +210,13 @@ class _CGui extends _CGuiBase {
 		oldbottom := this._RangeRECT.Bottom
 		Childbottom := Child._WindowRECT.Bottom
 		shrank := 0
-		if (this._RangeRECT.Union(Child._WindowRECT)){
+		;ToolTip % "Child: " this._SerializeRECT(Child._WindowRECT)
+		if (!this._RangeRECT.contains(Child._WindowRECT)){
+			;SoundBeep
+			this._RangeRECT.Union(Child._WindowRECT)
 			newBottom := this._RangeRECT.Bottom
+			;this._RangeRECT.Bottom := 300
+			;this._RangeRECT.Right := 300
 			; Child grew Range
 			;ToolTip % this.NAme " grew`n" this._SerializeRECT(this._RangeRECT) "`nChild: " this._SerializeRECT(Child._WindowRECT)
 			this._GuiSetScrollbarSize()
@@ -247,6 +251,7 @@ class _CGui extends _CGuiBase {
 							}
 							this._RangeRECT.Union(this._ChildGuis[childHwnd]._WindowRECT)
 						}
+						;ToolTip % "Child: " this._SerializeRECT(old[childHwnd]._WindowRECT) "`nfrom: " from
 						if (!this._RangeRECT.contains(old[childHwnd]._WindowRECT)){
 							this._RangeRECT.Union(Child._WindowRECT)
 							this._GuiSetScrollbarSize()
@@ -452,14 +457,12 @@ class _CGui extends _CGuiBase {
 		return lpPoint
 	}
 	
-	/*
 	_DLL_MapWindowPoints(hwndFrom, hwndTo, ByRef lpPoints, cPoints := 2){
 		; https://msdn.microsoft.com/en-gb/library/windows/desktop/dd145046(v=vs.85).aspx
-		lpPoints := new _Struct(WinStructs.RECT)
+		;lpPoints := new _Struct(WinStructs.RECT)
 		r := DllCall("User32.dll\MapWindowPoints", "Ptr", hwndFrom, "Ptr", hwndTo, "Ptr", lpPoints[], "Uint", cPoints, "Uint")
 		return lpPoints
 	}
-	*/
 	
 	; Wraps ScrollWindow() DLL Call.
 	_DLL_ScrollWindow(XAmount, YAmount, hwnd := 0){
@@ -628,6 +631,7 @@ class _CGuiBase {
 		
 		; Does this RECT contain the passed rect ?
 		Contains(RECT){
+			;tooltip % A_ThisFunc "`n" this.RECT.Bottom ">=" RECT.Bottom " ?"
 			return (this.RECT.Top <= RECT.Top && this.RECT.Left <= RECT.Left && this.RECT.Bottom >= RECT.Bottom && this.RECT.Right >= RECT.Right)
 		}
 		
@@ -697,23 +701,62 @@ class _CGuiBase {
 	*/
 	
 	; Sets the Window RECT.
-	_GuiSetWindowRECT(){
+	_GuiSetWindowRECT(wParam := 0, lParam := 0, msg := 0, hwnd := 0){
 		Static SB_HORZ := 0, SB_VERT = 1
 		if (this._type = "w"){
+			; WinGetPos is relative to the SCREEN
+			frame := DllCall("GetParent", "Uint", this._hwnd)
+			;MsgBox % "frame - " this.FormatHex(frame) ", parent - " this._parent._hwnd
 			WinGetPos, PosX, PosY, Width, Height, % "ahk_id " this._hwnd
+			;WinGetPos, PosX, PosY, Width, Height, % "ahk_id " frame
 			if (this._parent = 0){
 				Bottom := PosY + height
 				Right := PosX + Width
 			} else {
-				; Coords need to be relative to window RANGE, not PAGE
-				POINT := this._DLL_ScreenToClient(this._parent._hwnd,PosX,PosY)
-				PosX := POINT.x
-				PosY := POINT.y
-				Bottom := (POINT.y + height) + this._parent._ScrollInfos[SB_VERT].nPos
-				Right := (POINT.x + Width) + this._parent._ScrollInfos[SB_HORZ].nPos
+				x := lParam & 0xffff
+				y := lParam >> 16
+				;ToolTip % x "," y
+				;origin := new _Struct(WinStructs.POINT, {x: x, y: y})
+				origin := new _Struct(WinStructs.POINT, {x: 0, y: 0})
+				RECT := new _Struct(WinStructs.RECT)
+				DllCall("GetWindowRect", "uint", this._hwnd, "Ptr", RECT[])
+				;POINT := this._DLL_ScreenToClient(this._hwnd, PosX, PosY)
+				POINT := this._DLL_ScreenToClient(this._parent._hwnd, RECT.Left, RECT.Top)
+				;ToolTip % "top:" RECT.Top
+				;ToolTip % "coords: " POINT.x "," POINT.y
+				;ToolTip % "coords: " POINT.x + this._parent._ScrollInfos[SB_HORZ].nPos + 1 "," POINT.y + this._parent._ScrollInfos[SB_VERT].nPos + 1
 				
-				PosX += this._parent._ScrollInfos[SB_HORZ].nPos
-				PosY += this._parent._ScrollInfos[SB_VERT].nPos
+				;ToolTip % "coords: " POINT.x "," POINT.y "`noffset: " this._parent._ScrollInfos[SB_HORZ].nPos "," this._parent._ScrollInfos[SB_VERT].nPos
+				;canvas := DllCall("GetWindow", "Uint", this._parent._hwnd, "uint", 5)
+				;MsgBox % "canvas - " this.FormatHex(canvas) ", child - " this._hwnd
+				;sleep 1000
+				;DllCall("ShowWindow", "Uint", canvas, "uint", 0)
+				;POINT := this._DLL_MapWindowPoints(this._hwnd, this._parent._hwnd, origin, 1)
+				;POINT.x -=8
+				;POINT.y -= 30
+				;ToolTip % POINT.y
+				;return
+				;ToolTip % "origin: " POINT.x
+				;return
+				; Coords need to be relative to window RANGE, not PAGE
+				;POINT := this._DLL_ScreenToClient(this._parent._hwnd, this._parent._ScrollInfos[SB_HORZ].nPos + PosX, this._parent._ScrollInfos[SB_VERT].nPos + PosY)
+				;ToolTip % PosY
+				;POINT := this._DLL_ScreenToClient(canvas, PosX, PosY)
+				;ToolTip % "origin: " POINT.y
+				;ToolTip % "Pos: " POINT.x "," POINT.y " - Offset: " this._CanvasOffset.y
+				;PT := this._DLL_ScreenToClient(this._parent._hwnd, 803, 1)
+				;ToolTip % PT.x "," PT.y " - " this._parent._ScrollInfos[SB_HORZ].nPos + 2 ", " this._parent._ScrollInfos[SB_HORZ].nMax ", " this._parent._ScrollInfos[SB_HORZ].nPage
+				;PosX := POINT.x
+				;PosY := POINT.y
+				x_offset := this._parent._ScrollInfos[SB_HORZ].nPos
+				y_offset := this._parent._ScrollInfos[SB_VERT].nPos
+				PosX := POINT.x  + x_offset + 1
+				PosY := POINT.y + y_offset + 1
+				Right := (PosX + Width) + x_offset
+				Bottom := (PosY + height) + y_offset
+				ToolTip % "coords: " PosX "," PosY
+				;PosX += this._parent._ScrollInfos[SB_HORZ].nPos
+				;PosY += this._parent._ScrollInfos[SB_VERT].nPos
 			}
 		} else {
 			GuiControlGet, Pos, % this._parent._hwnd ":Pos", % this._hwnd
@@ -724,7 +767,7 @@ class _CGuiBase {
 		this._WindowRECT.Top := PosY
 		this._WindowRECT.Right := Right
 		this._WindowRECT.Bottom := Bottom
-
+		;ToolTip % A_ThisFunc "`n" this._SerializeRECT(this._WindowRECT)
 
 		if (this._DebugWindows){
 			UpdateDebug()
@@ -789,4 +832,24 @@ class BoundFunc {
             return %fn%(args*)
         }
     }
+}
+
+CreatePoint(x,y, ByRef POINT){
+	VarSetCapacity(POINT, 8)
+	NumPut(x, POINT, 0, "Uint")
+	NumPut(y, POINT, 4, "Uint")
+	return POINT
+}
+
+GetPoints(ByRef POINT){
+	px := NumGet(POINT,0)
+	py := NumGet(POINT,4)
+	return {x: px, y: py}
+}
+
+_DLL_MapWindowPoints(hwndFrom, hwndTo, ByRef lpPoints, cPoints := 1){
+	; https://msdn.microsoft.com/en-gb/library/windows/desktop/dd145046(v=vs.85).aspx
+	;r := DllCall("User32.dll\MapWindowPoints", "Ptr", hwndFrom, "Ptr", hwndTo, "Ptr", lpPoints[], "Uint", cPoints, "Uint")
+	r := DllCall("User32.dll\MapWindowPoints", "Ptr", hwndFrom, "Ptr", hwndTo, "Ptr", &lpPoints, "Uint", cPoints, "Uint")
+	return lpPoints
 }
