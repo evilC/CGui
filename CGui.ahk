@@ -16,22 +16,25 @@ Menu, Menu1, Add, Border, ToggleBorder
 Gui, Menu, Menu1
 
 main.Child := new _Cgui(main, BoolToSgn(BorderState) "Border +Resize +Parent" main._hwnd)
-main._DebugWindows := 1
-main.Child._DebugWindows := 1
+main._DebugWindows := 0
+main.Child._DebugWindows := 0
 main.NAme := "main"
 main.Child.NAme := "Child"
 
 main.Child.Show("w150 h150 x0 y0")
 
+if (main._DebugWindows || main.child._DebugWindows){
+	Gui, New, hwndhDebug
+	Gui, % hDebug ":Show", w500 h 200 x0 y0
+	Gui, % hDebug ":Add", Text, % "hwndhDebugOuter w400 h200" ,
+}
+
 Loop 8 {
 	main.Child.Gui("Add", "Edit", "w300", "Item " A_Index)
 }
-
-Gui, New, hwndhDebug
-Gui, % hDebug ":Show", w400 h 200 x0 y0
-Gui, % hDebug ":Add", Text, % "hwndhDebugOuter w400 h200" ,
-
-UpdateDebug()
+if (main._DebugWindows || main.child._DebugWindows){
+	UpdateDebug()
+}
 return
 
 UpdateDebug() {
@@ -39,10 +42,11 @@ UpdateDebug() {
 	global hDebug, hDebugOuter
 	str := ""
 	str .= "Outer WINDOW: `t" main._SerializeRECT(main._WindowRECT)
-	str .= "Outer PAGE: `t`t" main._SerializeRECT(main._PageRECT)
-	str .= "Outer RANGE: `t`t" main._SerializeRECT(main._RangeRECT)
-	str .= "`nInner WINDOW: `t: " main._SerializeRECT(main.Child._WindowRECT)
-	str .= "Inner PAGE: `t`t: " main._SerializeRECT(main.Child._PageRECT)
+	str .= "`nOuter PAGE: `t`t" main._SerializeRECT(main._PageRECT)
+	str .= "`nOuter RANGE: `t`t" main._SerializeRECT(main._RangeRECT)
+	str .= "`n`nInner WINDOW: `t: " main._SerializeRECT(main.Child._WindowRECT)
+	str .= "`nInner PAGE: `t`t: " main._SerializeRECT(main.Child._PageRECT)
+	str .= "`nInner RANGE: `t`t: " main._SerializeRECT(main.Child._RangeRECT)
 	GuiControl, % hDebug ":", % hDebugOuter, % str
 	Sleep 100
 }
@@ -137,6 +141,7 @@ class _CGui extends _CGuiBase {
 			; Create GuiControl
 			obj := new this._CGuiControl(this, aParams*)
 			this._ChildControls[obj._hwnd] := obj
+			this._GuiChildChangedRange(obj, obj._WindowRECT)
 			return obj
 		} else if (cmd = "new"){
 			obj := new _CGui(this, aParams*)
@@ -186,7 +191,6 @@ class _CGui extends _CGuiBase {
 	_OnMove(wParam := 0, lParam := 0, msg := 0, hwnd := 0){
 		old := this._WindowRECT.clone()
 		this._GuiSetWindowRECT()
-		;this._parent._GuiChildChangedRange(this, moved)
 		this._parent._GuiChildChangedRange(this, old)
 		return
 		; defines the directions we can move, and the opposite direction of each.
@@ -281,8 +285,12 @@ class _CGui extends _CGuiBase {
 		static opposites := {top: "bottom", left: "right", bottom: "top", right: "left"}
 		;SoundBeep
 		;this._GuiSetWindowRECT()
+		oldbottom := this._RangeRECT.Bottom
+		Childbottom := Child._WindowRECT.Bottom
 		if (this._RangeRECT.Union(Child._WindowRECT)){
+			newBottom := this._RangeRECT.Bottom
 			; Child grew Range
+			;ToolTip % this.NAme " grew`n" this._SerializeRECT(this._RangeRECT) "`nChild: " this._SerializeRECT(Child._WindowRECT)
 			this._GuiSetScrollbarSize()
 		} else {
 			; Detect if child touching edge of range.
@@ -593,7 +601,7 @@ class _CGui extends _CGuiBase {
 	
 	; Converts a rect to a debugging string
 	_SerializeRECT(RECT) {
-		return "T: " RECT.Top "`tL: " RECT.Left "`tB: " RECT.Bottom "`tR: " RECT.Right "`n"
+		return "T: " RECT.Top "`tL: " RECT.Left "`tB: " RECT.Bottom "`tR: " RECT.Right
 	}
 	
 	; ========================================== CLASSES ==========================================
@@ -605,10 +613,13 @@ class _CGui extends _CGuiBase {
 		__New(parent, ctrltype, options := "", text := ""){
 			this._parent := parent
 			Gui, % this._parent.PrefixHwnd("Add"), % ctrltype, % "hwndhwnd " options, % text
+			;this._parent.Gui("add", ctrltype, "hwndhwnd " options
 			this._hwnd := hwnd
+			this._WindowRECT := new this.RECT()
+			this._GuiSetWindowRECT()
+			/*
 			GuiControlGet, Pos, % this._parent._hwnd ":Pos", % this._hwnd
 			this._PageRECT := new this.RECT({Top: PosY, Left: PosX, Bottom: PosY + PosH, Right: PosX + PosW})
-			/*
 			if (!this._parent._PageRECT.contains(this._PageRECT)){
 				this._parent._RangeRECT.Union(this._PageRECT)
 				this._parent._GuiSetScrollbarSize()
@@ -743,16 +754,22 @@ class _CGuiBase {
 	
 	; Sets the Window RECT.
 	_GuiSetWindowRECT(){
+		if (this._type = "w"){
 		WinGetPos, PosX, PosY, Width, Height, % "ahk_id " this._hwnd
-		if (this._parent = 0){
-			Bottom := PosY + height
-			Right := PosX + Width
+			if (this._parent = 0){
+				Bottom := PosY + height
+				Right := PosX + Width
+			} else {
+				POINT := this._DLL_ScreenToClient(this._parent._hwnd,PosX,PosY)
+				PosX := POINT.x
+				PosY := POINT.y
+				Bottom := POINT.y + height
+				Right := POINT.x + Width
+			}
 		} else {
-			POINT := this._DLL_ScreenToClient(this._parent._hwnd,PosX,PosY)
-			PosX := POINT.x
-			PosY := POINT.y
-			Bottom := POINT.y + height
-			Right := POINT.x + Width
+			GuiControlGet, Pos, % this._parent._hwnd ":Pos", % this._hwnd
+			Right := PosX + PosW
+			Bottom := PosY + PosH
 		}
 		this._WindowRECT.Left := PosX
 		this._WindowRECT.Top := PosY
