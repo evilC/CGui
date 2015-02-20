@@ -11,12 +11,15 @@
 BorderState := 1
 
 main := new _CGui(0,"+Resize")
-main._DebugWindows := 1
 main.Show("w200 h200 y0", "CGui Demo")
 Menu, Menu1, Add, Border, ToggleBorder
 Gui, Menu, Menu1
 
 main.Child := new _Cgui(main, BoolToSgn(BorderState) "Border +Resize +Parent" main._hwnd)
+main._DebugWindows := 1
+main.Child._DebugWindows := 1
+main.NAme := "main"
+main.Child.NAme := "Child"
 
 main.Child.Show("w150 h150 x0 y0")
 
@@ -81,6 +84,7 @@ class _CGui extends _CGuiBase {
 		; Initialize page and range classes so that all values read 0
 		this._RangeRECT := new this.RECT()
 		this._PageRECT := new this.RECT()
+		this._WindowRECT := new this.RECT()
 		
 		; Initialize scroll info array
 		this._ScrollInfos := {0: this._DLL_GetScrollInfo(SB_HORZ), 1: this._DLL_GetScrollInfo(SB_VERT)}
@@ -165,22 +169,23 @@ class _CGui extends _CGuiBase {
 	; If the GUI moves outside it's parent's RECT, enlarge the parent's RANGE
 	; ToDo: Needs work? buggy?
 	_OnMove(wParam, lParam, msg, hwnd){
+		this._GuiSetWindowRECT()
 		;SoundBeep
 		; ToDo:
 		; OnMove for base class sets window position in INI
 		; lParam x/y coords are relative to parent's outer rect - seem pretty useless.
 		; WinGetPos gets coordinates relative to SCREEN.
-		WinGetPos, X, Y, Width, Height, % "ahk_id " this._hwnd
+		;WinGetPos, X, Y, Width, Height, % "ahk_id " this._hwnd
 		if (!this._parent){
 			; Root window - _WindowRECT is coords relative to SCREEN.
-			this._WindowRECT := new this.RECT({Left: x, Top: y, Right: x + Width, Bottom: y + height})
+			;this._WindowRECT := new this.RECT({Left: x, Top: y, Right: x + Width, Bottom: y + height})
 			;tooltip % this._WindowRECT.Top
 		} else {
 			; Child window - _WindowRECT is OUTER coords (including chrome) relative to PARENT.
 			;tooltip % "Top: " POINT.y ", Left: " POINT.X ", Bottom: " height + POINT.y ", Right: " Width + POINT.x
-			POINT := this._DLL_ScreenToClient(this._parent._hwnd,x,y)
+			;POINT := this._DLL_ScreenToClient(this._parent._hwnd,x,y)
 			; Set _WindowRECT to OUTER coords, relative to the parent's INNER (client area) RECT.
-			this._WindowRECT := new this.RECT({Left: POINT.x, Top: POINT.y, Right: POINT.x + Width, Bottom: POINT.y + height})
+			;this._WindowRECT := new this.RECT({Left: POINT.x, Top: POINT.y, Right: POINT.x + Width, Bottom: POINT.y + height})
 			; Enlarge Parent's RANGE if needed.
 			if (this._parent._PageRECT.contains(this._WindowRECT)){
 				if (!this._parent._RangeRECT.Union(this._WindowRECT)){
@@ -210,6 +215,27 @@ class _CGui extends _CGuiBase {
 		}
 	}
 
+	_GuiSetWindowRECT(){
+		WinGetPos, X, Y, Width, Height, % "ahk_id " this._hwnd
+		if (!this._parent){
+			this._WindowRECT.Left := x
+			this._WindowRECT.Top := y
+			this._WindowRECT.Right := x + Width
+			this._WindowRECT.Bottom := y + height
+			;this._WindowRECT := new this.RECT({Left: x, Top: y, Right: x + Width, Bottom: y + height})
+		} else {
+			POINT := this._DLL_ScreenToClient(this._parent._hwnd,x,y)
+			;ToolTip % POINT.y
+			this._WindowRECT.Left := POINT.x
+			;ToolTip % this._WindowRECT.Left
+			this._WindowRECT.Top := POINT.y
+			this._WindowRECT.Right := POINT.x + Width
+			this._WindowRECT.Bottom := POINT.y + height
+		}
+		if (this._DebugWindows){
+			UpdateDebug()
+		}
+	}
 	; ========================================== SCROLL BARS ======================================
 
 	; Is the scrollbar at maximum? (ie all the way at the end).
