@@ -23,7 +23,24 @@ Loop 8 {
 	main.Child.Gui("Add", "Edit", "w300", "Item " A_Index)
 }
 
+Gui, New, hwndhDebug
+Gui, % hDebug ":Show", w400 h 200 x0 y0
+Gui, % hDebug ":Add", Text, % "hwndhDebugOuter w400 h200" ,
+
+UpdateDebug()
 return
+
+UpdateDebug() {
+	global main
+	global hDebug, hDebugOuter
+	str := ""
+	str .= "Outer WINDOW: `tT: " main._WindowRECT.Top "`tL: " main._WindowRECT.Left "`tB: " main._WindowRECT.Bottom "`tR: " main._WindowRECT.Right "`n"
+	str .= "Outer PAGE: `t`tT: " main._PageRECT.Top "`tL: " main._PageRECT.Left "`tB: " main._PageRECT.Bottom "`tR: " main._PageRECT.Right "`n"
+	str .= "Outer RANGE: `t`tT: " main._RangeRECT.Top "`tL: " main._RangeRECT.Left "`tB: " main._RangeRECT.Bottom "`tR: " main._RangeRECT.Right "`n`n"
+	str .= "Inner WINDOW: `tT: " main.Child._WindowRECT.Top "`tL: " main.Child._WindowRECT.Left "`tB: " main.Child._WindowRECT.Bottom "`tR: " main.Child._WindowRECT.Right "`n"
+	GuiControl, % hDebug ":", % hDebugOuter, % str
+	Sleep 100
+}
 
 ToggleBorder:
 	BorderState := !BorderState
@@ -74,6 +91,7 @@ class _CGui extends _CGuiBase {
 		
 		; Register for move message.
 		this._RegisterMessage(WM_MOVE,this._OnMove)
+		UpdateDebug()
 	}
 
 	__Destroy(){
@@ -133,6 +151,7 @@ class _CGui extends _CGuiBase {
 			; Adjust Scrollbars if required
 			this._GuiSetScrollbarSize()
 		}
+		UpdateDebug()
 	}
 	
 	; Called when a GUI Moves.
@@ -179,7 +198,7 @@ class _CGui extends _CGuiBase {
 			}
 		}
 
-	
+		UpdateDebug()
 	}
 
 	; ========================================== SCROLL BARS ======================================
@@ -354,6 +373,7 @@ class _CGui extends _CGuiBase {
 			this._ScrollInfos[bar].nPos := ScrollInfo.nTrackPos
 			this._GuiSetScrollbarPos(ScrollInfo.nTrackPos, bar)
 		}
+		UpdateDebug()
 	}
 
 	; ========================================== DLL CALLS ========================================
@@ -470,6 +490,7 @@ class _CGui extends _CGuiBase {
 				this._parent._RangeRECT.Union(this._PageRECT)
 				this._parent._GuiSetScrollbarSize()
 			}
+			UpdateDebug()
 		}
 		
 		__Destroy(){
