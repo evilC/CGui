@@ -38,11 +38,11 @@ UpdateDebug() {
 	global main
 	global hDebug, hDebugOuter
 	str := ""
-	str .= "Outer WINDOW: `tT: " main._WindowRECT.Top "`tL: " main._WindowRECT.Left "`tB: " main._WindowRECT.Bottom "`tR: " main._WindowRECT.Right "`n"
-	str .= "Outer PAGE: `t`tT: " main._PageRECT.Top "`tL: " main._PageRECT.Left "`tB: " main._PageRECT.Bottom "`tR: " main._PageRECT.Right "`n"
-	str .= "Outer RANGE: `t`tT: " main._RangeRECT.Top "`tL: " main._RangeRECT.Left "`tB: " main._RangeRECT.Bottom "`tR: " main._RangeRECT.Right "`n`n"
-	str .= "Inner WINDOW: `tT: " main.Child._WindowRECT.Top "`tL: " main.Child._WindowRECT.Left "`tB: " main.Child._WindowRECT.Bottom "`tR: " main.Child._WindowRECT.Right "`n"
-	str .= "Inner PAGE: `t`tT: " main.Child._PageRECT.Top "`tL: " main.Child._PageRECT.Left "`tB: " main.Child._PageRECT.Bottom "`tR: " main.Child._PageRECT.Right "`n"
+	str .= "Outer WINDOW: `t" main._SerializeRECT(main._WindowRECT)
+	str .= "Outer PAGE: `t`t" main._SerializeRECT(main._PageRECT)
+	str .= "Outer RANGE: `t`t" main._SerializeRECT(main._RangeRECT)
+	str .= "`nInner WINDOW: `tT: " main._SerializeRECT(main.Child._WindowRECT)
+	str .= "Inner PAGE: `t`tT: " main._SerializeRECT(main.Child._PageRECT)
 	GuiControl, % hDebug ":", % hDebugOuter, % str
 	Sleep 100
 }
@@ -98,6 +98,7 @@ class _CGui extends _CGuiBase {
 		
 		; Register for move message.
 		this._RegisterMessage(WM_MOVE,this._OnMove)
+		
 		if (this._DebugWindows){
 			UpdateDebug()
 		}
@@ -117,6 +118,11 @@ class _CGui extends _CGuiBase {
 	; Equivalent to Gui, Show
 	Show(options := "", title := ""){
 		Gui, % this.PrefixHwnd("Show"), % options, % title
+		;this._GuiSetWindowRECT()
+		if (this._parent != 0){
+			; Parent GUIs get a WM_MOVE message at start - emulate for children.
+			this._OnMove()
+		}
 	}
  
 	; Wrapper for Gui commands
@@ -168,8 +174,42 @@ class _CGui extends _CGuiBase {
 	; Called when a GUI Moves.
 	; If the GUI moves outside it's parent's RECT, enlarge the parent's RANGE
 	; ToDo: Needs work? buggy?
-	_OnMove(wParam, lParam, msg, hwnd){
-		this._GuiSetWindowRECT()
+	_OnMove(wParam := 0, lParam := 0, msg := 0, hwnd := 0){
+		; defines the directions we can move, and the opposite direction of each.
+		static opposites := {top: "bottom", left: "right", bottom: "top", right: "left"}
+		; set the new _WindowRECT and find out how much we moved, and in what direction.
+		moved := this._GuiSetWindowRECT()
+		
+		;ToolTip % "moved: " this._SerializeRECT(moved)
+		;return
+		for dir in opposites {
+			if (moved[dir] > 0){
+				opp := opposites[dir]
+				adj := 1
+				if (this._WindowRECT[opp] + adj = this._parent._RangeRECT[opp]){
+					; we were touching an edge of the parent's RANGE, and moved away from it.
+					;SoundBeep
+					this._parent._RangeRECT[opp] := this._WindowRECT[opp] - moved[dir]
+					this._parent._GuiSetScrollbarSize()
+					return
+				}
+				;tooltip % "moved " dir
+			}
+		}
+		;ToolTip % "moved down " moved.Bottom
+		;return
+		if (this._parent != 0){
+			; Child window
+			if (this._parent._RangeRECT.Union(this._WindowRECT)){
+				; We just enlarged the parent's RANGE
+				this._parent._GuiSetScrollbarSize()
+				;SoundBeep
+			} else {
+				;ToolTip % this._WindowRECT.Bottom " = " 
+				; Contract?
+			}
+		}
+		return
 		;SoundBeep
 		; ToDo:
 		; OnMove for base class sets window position in INI
@@ -215,26 +255,36 @@ class _CGui extends _CGuiBase {
 		}
 	}
 
+	; Sets the Window RECT.
+	; Also returns a RECT indicating the amount the window moved
 	_GuiSetWindowRECT(){
+		moved := new this.RECT()
 		WinGetPos, X, Y, Width, Height, % "ahk_id " this._hwnd
 		if (!this._parent){
-			this._WindowRECT.Left := x
-			this._WindowRECT.Top := y
-			this._WindowRECT.Right := x + Width
-			this._WindowRECT.Bottom := y + height
-			;this._WindowRECT := new this.RECT({Left: x, Top: y, Right: x + Width, Bottom: y + height})
+			Bottom := y + height
+			Right := x + Width
 		} else {
 			POINT := this._DLL_ScreenToClient(this._parent._hwnd,x,y)
-			;ToolTip % POINT.y
-			this._WindowRECT.Left := POINT.x
-			;ToolTip % this._WindowRECT.Left
-			this._WindowRECT.Top := POINT.y
-			this._WindowRECT.Right := POINT.x + Width
-			this._WindowRECT.Bottom := POINT.y + height
+			x := POINT.x
+			y := POINT.y
+			Bottom := POINT.y + height
+			Right := POINT.x + Width
 		}
+		
+		moved.Left := (x - this._WindowRECT.Left) * -1	; invert so positive means "we moved left"
+		this._WindowRECT.Left := x
+		moved.Top := (y - this._WindowRECT.Top) * -1
+		this._WindowRECT.Top := y
+		moved.Right := Right - this._WindowRECT.Right
+		this._WindowRECT.Right := Right
+		moved.Bottom := Bottom - this._WindowRECT.Bottom
+		this._WindowRECT.Bottom := Bottom
+			
 		if (this._DebugWindows){
 			UpdateDebug()
 		}
+		
+		return moved
 	}
 	; ========================================== SCROLL BARS ======================================
 
@@ -512,6 +562,14 @@ class _CGui extends _CGuiBase {
 			OnMessage(msg, fn)
 		}
 	}
+	
+	; ========================================== MISC =============================================
+	
+	; Converts a rect to a debugging string
+	_SerializeRECT(RECT) {
+		return "T: " RECT.Top "`tL: " RECT.Left "`tB: " RECT.Bottom "`tR: " RECT.Right "`n"
+	}
+	
 	; ========================================== CLASSES ==========================================
 	
 	; Wraps GuiControls into an Object
