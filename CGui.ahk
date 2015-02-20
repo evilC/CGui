@@ -11,11 +11,12 @@
 BorderState := 1
 
 main := new _CGui(0,"+Resize")
-main.Show("w200 h200 y0", "CGui Demo")
+main.Show("w300 h300 y0", "CGui Demo")
 Menu, Menu1, Add, Border, ToggleBorder
 Gui, Menu, Menu1
 
-main.Child := new _Cgui(main, BoolToSgn(BorderState) "Border +Resize +Parent" main._hwnd)
+;main.Child := new _Cgui(main, BoolToSgn(BorderState) "Border +Resize +Parent" main._hwnd)
+main.Child := main.Gui("new", BoolToSgn(BorderState) "Border +Resize +Parent" main._hwnd)
 main._DebugWindows := 0
 main.Child._DebugWindows := 0
 main.NAme := "main"
@@ -191,92 +192,11 @@ class _CGui extends _CGuiBase {
 	_OnMove(wParam := 0, lParam := 0, msg := 0, hwnd := 0){
 		old := this._WindowRECT.clone()
 		this._GuiSetWindowRECT()
-		this._parent._GuiChildChangedRange(this, old)
-		return
-		; defines the directions we can move, and the opposite direction of each.
-		static opposites := {top: "bottom", left: "right", bottom: "top", right: "left"}
-		; set the new _WindowRECT and find out how much we moved, and in what direction.
-		moved := this._GuiSetWindowRECT()
-		
-		/*
-		;ToolTip % "moved: " this._SerializeRECT(moved)
-		;return
-		for dir in opposites {
-			if (moved[dir] > 0){
-				opp := opposites[dir]
-				adj := 1
-				if (this._WindowRECT[opp] + adj = this._parent._RangeRECT[opp]){
-					; we were touching an edge of the parent's RANGE, and moved away from it.
-					;SoundBeep
-					;this._parent._RangeRECT[opp] := this._WindowRECT[opp] - moved[dir]
-					;this._parent._GuiSetScrollbarSize()
-					;return
-				}
-				;tooltip % "moved " dir
-			}
-		}
-		;ToolTip % "moved down " moved.Bottom
-		;return
-		if (this._parent != 0){
-			; Child window
-			this._parent._GuiChildChangedRange(this)
-			return
-			
-			if (this._parent._RangeRECT.Union(this._WindowRECT)){
-				; We just enlarged the parent's RANGE
-				this._parent._GuiSetScrollbarSize()
-				;SoundBeep
-			} else {
-				;ToolTip % this._WindowRECT.Bottom " = " 
-				; Contract?
-			}
+		ToolTip % old.Bottom ", " this._WindowRECT.Bottom
+		if (!this._WindowRECT.Equals(old)){
+			this._parent._GuiChildChangedRange(this, old)
 		}
 		return
-		
-		;SoundBeep
-		; ToDo:
-		; OnMove for base class sets window position in INI
-		; lParam x/y coords are relative to parent's outer rect - seem pretty useless.
-		; WinGetPos gets coordinates relative to SCREEN.
-		;WinGetPos, X, Y, Width, Height, % "ahk_id " this._hwnd
-		if (!this._parent){
-			; Root window - _WindowRECT is coords relative to SCREEN.
-			;this._WindowRECT := new this.RECT({Left: x, Top: y, Right: x + Width, Bottom: y + height})
-			;tooltip % this._WindowRECT.Top
-		} else {
-			; Child window - _WindowRECT is OUTER coords (including chrome) relative to PARENT.
-			;tooltip % "Top: " POINT.y ", Left: " POINT.X ", Bottom: " height + POINT.y ", Right: " Width + POINT.x
-			;POINT := this._DLL_ScreenToClient(this._parent._hwnd,x,y)
-			; Set _WindowRECT to OUTER coords, relative to the parent's INNER (client area) RECT.
-			;this._WindowRECT := new this.RECT({Left: POINT.x, Top: POINT.y, Right: POINT.x + Width, Bottom: POINT.y + height})
-			; Enlarge Parent's RANGE if needed.
-			if (this._parent._PageRECT.contains(this._WindowRECT)){
-				if (!this._parent._RangeRECT.Union(this._WindowRECT)){
-					;this._parent._GuiSetScrollbarSize()
-					; Size down
-					;SoundBeep
-					this._parent._RangeRECT := this._WindowRECT
-					this._parent._GuiSetScrollbarSize()
-				}
-				; Window Bounds are inside parent's PAGE
-
-				;tooltip % "Range B: "  this._parent._RangeRECT.Bottom ", R: " this._parent._RangeRECT.Right ", Bottom: " height + POINT.y ", Right: " Width + POINT.x
-				;if (this._parent._RangeRECT.contains(this._WindowRECT)){
-				;}
-			} else {
-				; Window Bounds fall outside parent's PAGE.
-				if (this._parent._RangeRECT.Union(this._WindowRECT)){
-					;SoundBeep
-					; Union returns true if it enlarged the parent's RANGE
-					this._parent._GuiSetScrollbarSize()
-				}
-			}
-		}
-
-		if (this._DebugWindows){
-			UpdateDebug()
-		}
-		*/
 	}
 
 	; A Child of this window changed it's usage of this window's RANGE (in other words, it moved or changed size)
@@ -287,6 +207,7 @@ class _CGui extends _CGuiBase {
 		;this._GuiSetWindowRECT()
 		oldbottom := this._RangeRECT.Bottom
 		Childbottom := Child._WindowRECT.Bottom
+		shrank := 0
 		if (this._RangeRECT.Union(Child._WindowRECT)){
 			newBottom := this._RangeRECT.Bottom
 			; Child grew Range
@@ -304,20 +225,39 @@ class _CGui extends _CGuiBase {
 					;ToolTip % "moved " this._SerializeRECT(moved)
 				;}
 				if (moved[dir] > 0){
+					shrank := 1
 					opp := opposites[dir]
 					;SoundBeep
 					if (old[opp] = this._RangeRECT[opp]){
 						; The child was touching an edge of our RANGE, and moved away from it ...
 						; ... Union WindowRECTs of all *other* children to see if this child is the only one needing that part of the range ...
 						; ... And if so, shrink our Range.
-						SoundBeep
-						;this._parent._RangeRECT[opp] := this._WindowRECT[opp] - moved[dir]
-						;this._parent._GuiSetScrollbarSize()
-						;return
+						Count := 0
+						for childHwnd in this._ChildGuis {
+							if (!Count){
+								this._RangeRECT := new this.RECT()
+								this._RangeRECT.Union(this._ChildGuis[childHwnd]._WindowRECT)
+								continue
+							}
+							if (childHwnd = child._hwnd){
+								continue
+							}
+							this._RangeRECT.Union(this._ChildGuis[childHwnd]._WindowRECT)
+						}
+						if (!this._RangeRECT.contains(old[childHwnd]._WindowRECT)){
+							this._RangeRECT.Union(Child._WindowRECT)
+							this._GuiSetScrollbarSize()
+						}
 					}
-					;tooltip % "moved " dir
 				}
 			}
+			/*
+			if (shrank){
+				ToolTip % this.NAme " shrank`n" this._SerializeRECT(this._RangeRECT) "`nChild: " this._SerializeRECT(Child._WindowRECT)
+			} else {
+				ToolTip
+			}
+			*/
 		}
 	}
 	; ========================================== SCROLL BARS ======================================
@@ -689,7 +629,7 @@ class _CGuiBase {
 		
 		; Is this RECT equal to the passed RECT?
 		Equals(RECT){
-			return (this.RECT.Bottom = RECT.Bottom && this.RECT.Right = RECT.Right)
+			return (this.RECT.Top = RECT.Top && this.RECT.Left = RECT.Left && this.RECT.Bottom = RECT.Bottom && this.RECT.Right = RECT.Right)
 		}
 		
 		; Expands the current RECT to include the new RECT
@@ -755,11 +695,12 @@ class _CGuiBase {
 	; Sets the Window RECT.
 	_GuiSetWindowRECT(){
 		if (this._type = "w"){
-		WinGetPos, PosX, PosY, Width, Height, % "ahk_id " this._hwnd
+			WinGetPos, PosX, PosY, Width, Height, % "ahk_id " this._hwnd
 			if (this._parent = 0){
 				Bottom := PosY + height
 				Right := PosX + Width
 			} else {
+				; ToDo: Coord needs to be relative to window RANGE, not PAGE
 				POINT := this._DLL_ScreenToClient(this._parent._hwnd,PosX,PosY)
 				PosX := POINT.x
 				PosY := POINT.y
