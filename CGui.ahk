@@ -17,8 +17,8 @@ Gui, Menu, Menu1
 
 ;main.Child := new _Cgui(main, BoolToSgn(BorderState) "Border +Resize +Parent" main._hwnd)
 main.Child := main.Gui("new", BoolToSgn(BorderState) "Border +Resize +Parent" main._hwnd)
-main._DebugWindows := 0
-main.Child._DebugWindows := 0
+main._DebugWindows := 1
+main.Child._DebugWindows := 1
 main.NAme := "main"
 main.Child.NAme := "Child"
 
@@ -189,11 +189,13 @@ class _CGui extends _CGuiBase {
 	; Called when a GUI Moves.
 	; If the GUI moves outside it's parent's RECT, enlarge the parent's RANGE
 	; ToDo: Needs work? buggy?
+	; OnMove seems to be called for a window when you scroll a window containing it.
 	_OnMove(wParam := 0, lParam := 0, msg := 0, hwnd := 0){
 		old := this._WindowRECT.clone()
 		this._GuiSetWindowRECT()
-		ToolTip % old.Bottom ", " this._WindowRECT.Bottom
+		;ToolTip % old.Bottom ", " this._WindowRECT.Bottom
 		if (!this._WindowRECT.Equals(old)){
+			; ToDo: This is tripping when it should not.
 			this._parent._GuiChildChangedRange(this, old)
 		}
 		return
@@ -205,6 +207,7 @@ class _CGui extends _CGuiBase {
 		static opposites := {top: "bottom", left: "right", bottom: "top", right: "left"}
 		;SoundBeep
 		;this._GuiSetWindowRECT()
+		oldrange := this._RangeRECT.clone()
 		oldbottom := this._RangeRECT.Bottom
 		Childbottom := Child._WindowRECT.Bottom
 		shrank := 0
@@ -259,6 +262,7 @@ class _CGui extends _CGuiBase {
 			}
 			*/
 		}
+		;ToolTip % A_ThisFunc "`nOld: " this._SerializeRECT(oldrange) "`nNew: " this._SerializeRECT(this._RangeRECT)
 	}
 	; ========================================== SCROLL BARS ======================================
 
@@ -694,18 +698,22 @@ class _CGuiBase {
 	
 	; Sets the Window RECT.
 	_GuiSetWindowRECT(){
+		Static SB_HORZ := 0, SB_VERT = 1
 		if (this._type = "w"){
 			WinGetPos, PosX, PosY, Width, Height, % "ahk_id " this._hwnd
 			if (this._parent = 0){
 				Bottom := PosY + height
 				Right := PosX + Width
 			} else {
-				; ToDo: Coord needs to be relative to window RANGE, not PAGE
+				; Coords need to be relative to window RANGE, not PAGE
 				POINT := this._DLL_ScreenToClient(this._parent._hwnd,PosX,PosY)
 				PosX := POINT.x
 				PosY := POINT.y
-				Bottom := POINT.y + height
-				Right := POINT.x + Width
+				Bottom := (POINT.y + height) + this._parent._ScrollInfos[SB_VERT].nPos
+				Right := (POINT.x + Width) + this._parent._ScrollInfos[SB_HORZ].nPos
+				
+				PosX += this._parent._ScrollInfos[SB_HORZ].nPos
+				PosY += this._parent._ScrollInfos[SB_VERT].nPos
 			}
 		} else {
 			GuiControlGet, Pos, % this._parent._hwnd ":Pos", % this._hwnd
