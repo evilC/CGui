@@ -24,6 +24,10 @@ main.Child.NAme := "Child"
 
 main.Child.Show("w150 h150 x0 y0")
 
+main._RangeRECT.Bottom := 500
+main._RangeRECT.Right := 500
+main._GuiSetScrollbarSize()
+
 if (main._DebugWindows || main.child._DebugWindows){
 	Gui, New, hwndhDebug
 	Gui, % hDebug ":Show", w500 h 200 x0 y0
@@ -48,6 +52,7 @@ UpdateDebug() {
 	str .= "`n`nInner WINDOW: `t: " main._SerializeRECT(main.Child._WindowRECT)
 	str .= "`nInner PAGE: `t`t: " main._SerializeRECT(main.Child._PageRECT)
 	str .= "`nInner RANGE: `t`t: " main._SerializeRECT(main.Child._RangeRECT)
+	str .= "`n`nTest RECT: `t`t: " main._SerializeRECT(main.Child._TestRECT)
 	GuiControl, % hDebug ":", % hDebugOuter, % str
 	Sleep 100
 }
@@ -95,6 +100,7 @@ class _CGui extends _CGuiBase {
 		this._RangeRECT := new this.RECT()
 		this._PageRECT := new this.RECT()
 		this._WindowRECT := new this.RECT()
+		this._TestRECT := new this.RECT()
 		
 		; Initialize scroll info array
 		this._ScrollInfos := {0: this._DLL_GetScrollInfo(SB_HORZ), 1: this._DLL_GetScrollInfo(SB_VERT)}
@@ -193,10 +199,11 @@ class _CGui extends _CGuiBase {
 		old := this._WindowRECT.clone()
 		this._GuiSetWindowRECT(wParam, lParam, msg, hwnd)
 		;ToolTip % A_ThisFunc "`nOld: " this._SerializeRECT(old) "`nNew: " this._SerializeRECT(this._WindowRECT)
-		if (!this._WindowRECT.Equals(old)){
+		;if (!this._WindowRECT.Equals(old)){
+			;SoundBeep, 1000, 100
 			; ToDo: This is tripping when it should not.
 			this._parent._GuiChildChangedRange(this, old, "_OnMove")
-		}
+		;}
 		return
 	}
 
@@ -211,16 +218,27 @@ class _CGui extends _CGuiBase {
 		Childbottom := Child._WindowRECT.Bottom
 		shrank := 0
 		;ToolTip % "Child: " this._SerializeRECT(Child._WindowRECT)
+		;this._RangeRECT.Bottom := 500
+		;this._RangeRECT.Right := 500
+		;this._GuiSetScrollbarSize()
+		; Child grew Range
+		;ToolTip % this.NAme " grew`n" this._SerializeRECT(this._RangeRECT) "`nChild: " this._SerializeRECT(Child._WindowRECT)
+		return
+		
 		if (!this._RangeRECT.contains(Child._WindowRECT)){
+		;if (this._RangeRECT.Union(Child._WindowRECT)){
 			;SoundBeep
-			this._RangeRECT.Union(Child._WindowRECT)
-			newBottom := this._RangeRECT.Bottom
-			;this._RangeRECT.Bottom := 300
-			;this._RangeRECT.Right := 300
+			;this._RangeRECT.Union(Child._WindowRECT)
+			UpdateDebug()
+			;ToolTip % "Child RECT:`n" this._SerializeRECT(Child._WindowRECT)
+			;newBottom := this._RangeRECT.Bottom
+			this._RangeRECT.Bottom := 500
+			this._RangeRECT.Right := 500
 			; Child grew Range
 			;ToolTip % this.NAme " grew`n" this._SerializeRECT(this._RangeRECT) "`nChild: " this._SerializeRECT(Child._WindowRECT)
 			this._GuiSetScrollbarSize()
 		} else {
+			return
 			; Detect if child touching edge of range.
 			; set the new _WindowRECT and find out how much we moved, and in what direction.
 			moved := this._GuiGetMoveAmount(old, Child._WindowRECT)
@@ -335,7 +353,7 @@ class _CGui extends _CGuiBase {
 				if (mask & SIF_RANGE){
 					; Range bits set
 					this._ScrollInfos[bar].nMin := RangeRECT[RECTProperties[bar].min]
-					this._ScrollInfos[bar].nMax := RangeRECT[RECTProperties[bar].max]
+					this._ScrollInfos[bar].nMax := RangeRECT[RECTProperties[bar].max] - 1
 				}
 				
 				if (mask & SIF_PAGE){
@@ -384,6 +402,7 @@ class _CGui extends _CGuiBase {
 
 	; A scrollbar was dragged
 	_OnScroll(wParam, lParam, msg, hwnd){
+		;SoundBeep
 		; Handles:
 		; WM_VSCROLL https://msdn.microsoft.com/en-gb/library/windows/desktop/bb787577(v=vs.85).aspx
 		; WM_HSCROLL https://msdn.microsoft.com/en-gb/library/windows/desktop/bb787575(v=vs.85).aspx
@@ -395,20 +414,22 @@ class _CGui extends _CGuiBase {
 		if (msg = WM_HSCROLL || msg = WM_VSCROLL){
 			bar := msg - 0x114
 		} else {
-			;SoundBeep
+			SoundBeep
 			return
 		}
 		ScrollInfo := this._DLL_GetScrollInfo(bar)
 		;OutputDebug, % "SI: " ScrollInfo.nTrackPos ", Bar: " bar
 
 		if (wParam = SB_LINEUP || wParam = SB_LINEDOWN){
+			SoundBeep
 			; "Scrolls one line up / Scrolls one line down"
 			; Is an unimplemented flag
-			SoundBeep, 100, 100
+			;SoundBeep, 100, 100
 		} else if (wParam = SB_PAGEUP || wParam = SB_PAGEDOWN){
+			SoundBeep
 			; "Scrolls one page up / Scrolls one page down"
 			; Is an unimplemented flag
-			SoundBeep, 100, 100
+			;SoundBeep, 100, 100
 		/*
 		} else if (wParam = SB_THUMBTRACK){
 			; "The user is dragging the scroll box. This message is sent repeatedly until the user releases the mouse button"
@@ -427,19 +448,26 @@ class _CGui extends _CGuiBase {
 			; These Flags generally only get set once each per drag.
 			; ... Also handles drag of scrollbar (wParam has set HIWORD = "current position of the scroll box"), so wParam will be very big.
 			; This HIWORD "Flag" gets set lots of times per drag.
+			
+			; Set the scrollbar pos BEFORE scrolling the window.
+			; Scrolling the window will cause WM_MOVE to trigger for children...
+			; ... And the position of the window needs to match the postion of the scrollbars at that point in time.
+			pos := (ScrollInfo.nTrackPos - this._ScrollInfos[bar].nPos) * -1
+			this._GuiSetScrollbarPos(ScrollInfo.nTrackPos, bar)
+			
 			if (bar){
 				; Vertical Bar
 				h := 0
-				v := (ScrollInfo.nTrackPos - this._ScrollInfos[bar].nPos) * -1
+				;v := (ScrollInfo.nTrackPos - this._ScrollInfos[bar].nPos) * -1
+				v := pos
 			} else {
 				; Horiz Bar
-				h := (ScrollInfo.nTrackPos - this._ScrollInfos[bar].nPos) * -1
+				;h := (ScrollInfo.nTrackPos - this._ScrollInfos[bar].nPos) * -1
+				h := pos
 				v := 0
 			}
 			;OutputDebug, % "[ " this._FormatHwnd() " ] " this._SetStrLen(A_ThisFunc) "   Scrolling window by (x,y) " h ", " v " - new Pos: " this._ScrollInfos[bar].nPos
 			this._DLL_ScrollWindow(h, v)
-			this._ScrollInfos[bar].nPos := ScrollInfo.nTrackPos
-			this._GuiSetScrollbarPos(ScrollInfo.nTrackPos, bar)
 		}
 		if (this._DebugWindows){
 			UpdateDebug()
@@ -702,6 +730,7 @@ class _CGuiBase {
 	
 	; Sets the Window RECT.
 	_GuiSetWindowRECT(wParam := 0, lParam := 0, msg := 0, hwnd := 0){
+		;SoundBeep, 500, 100
 		Static SB_HORZ := 0, SB_VERT = 1
 		if (this._type = "w"){
 			; WinGetPos is relative to the SCREEN
@@ -717,11 +746,14 @@ class _CGuiBase {
 				y := lParam >> 16
 				;ToolTip % x "," y
 				;origin := new _Struct(WinStructs.POINT, {x: x, y: y})
-				origin := new _Struct(WinStructs.POINT, {x: 0, y: 0})
+				;origin := new _Struct(WinStructs.POINT, {x: 0, y: 0})
 				RECT := new _Struct(WinStructs.RECT)
 				DllCall("GetWindowRect", "uint", this._hwnd, "Ptr", RECT[])
 				;POINT := this._DLL_ScreenToClient(this._hwnd, PosX, PosY)
 				POINT := this._DLL_ScreenToClient(this._parent._hwnd, RECT.Left, RECT.Top)
+				;POINT := this._DLL_ScreenToClient(this._parent._hwnd, x, y)
+				ScrollInfo := this._parent._DLL_GetScrollInfo(SB_VERT)
+				ToolTip % x "," y " / " this._parent._ScrollInfos[SB_VERT].nPos " / " ScrollInfo.nPos
 				;ToolTip % "top:" RECT.Top
 				;ToolTip % "coords: " POINT.x "," POINT.y
 				;ToolTip % "coords: " POINT.x + this._parent._ScrollInfos[SB_HORZ].nPos + 1 "," POINT.y + this._parent._ScrollInfos[SB_VERT].nPos + 1
@@ -750,11 +782,19 @@ class _CGuiBase {
 				;PosY := POINT.y
 				x_offset := this._parent._ScrollInfos[SB_HORZ].nPos
 				y_offset := this._parent._ScrollInfos[SB_VERT].nPos
-				PosX := POINT.x  + x_offset + 1
-				PosY := POINT.y + y_offset + 1
-				Right := (PosX + Width) + x_offset
-				Bottom := (PosY + height) + y_offset
-				ToolTip % "coords: " PosX "," PosY
+				;ScrollInfo := this._parent._DLL_GetScrollInfo(SB_VERT)
+				;ToolTip % ScrollInfo.nPos "," this._parent._ScrollInfos[SB_VERT].nPos
+				;SoundBeep, 500, 100
+				;PosX := POINT.x  + x_offset
+				;PosY := POINT.y + y_offset
+				PosX := POINT.x
+				PosY := POINT.y
+				;Right := (PosX + Width) + x_offset
+				;Bottom := (PosY + height) + y_offset
+				Right := (PosX + Width)
+				Bottom := (PosY + height)
+				
+				;ToolTip % "coords: " PosX "," PosY
 				;PosX += this._parent._ScrollInfos[SB_HORZ].nPos
 				;PosY += this._parent._ScrollInfos[SB_VERT].nPos
 			}
@@ -763,11 +803,17 @@ class _CGuiBase {
 			Right := PosX + PosW
 			Bottom := PosY + PosH
 		}
-		this._WindowRECT.Left := PosX
-		this._WindowRECT.Top := PosY
-		this._WindowRECT.Right := Right
-		this._WindowRECT.Bottom := Bottom
-		;ToolTip % A_ThisFunc "`n" this._SerializeRECT(this._WindowRECT)
+		
+		;this._WindowRECT.Left := PosX
+		;this._WindowRECT.Top := PosY
+		;this._WindowRECT.Right := Right
+		;this._WindowRECT.Bottom := Bottom
+		;ToolTip % A_ThisFunc "`n" this._SerializeRECT(this._WindowRECT) " - " y_offset
+		this._TestRECT.Left := PosX
+		this._TestRECT.Top := PosY
+		this._TestRECT.Right := Right
+		this._TestRECT.Bottom := Bottom
+		;ToolTip % A_ThisFunc "`n" this._SerializeRECT(this._TestRECT) " - " y_offset
 
 		if (this._DebugWindows){
 			UpdateDebug()
