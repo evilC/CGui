@@ -17,8 +17,8 @@ Gui, Menu, Menu1
 
 ;main.Child := new _Cgui(main, BoolToSgn(BorderState) "Border +Resize +Parent" main._hwnd)
 main.Child := main.Gui("new", BoolToSgn(BorderState) "Border +Resize +Parent" main._hwnd)
-main._DebugWindows := 0
-main.Child._DebugWindows := 0
+main._DebugWindows := 1
+main.Child._DebugWindows := 1
 main.NAme := "main"
 main.Child.NAme := "Child"
 
@@ -30,7 +30,7 @@ main.Child.Show("w150 h150 x0 y0")
 
 if (main._DebugWindows || main.child._DebugWindows){
 	Gui, New, hwndhDebug
-	Gui, % hDebug ":Show", w300 h100 x0 y0
+	Gui, % hDebug ":Show", w300 h140 x0 y0
 	Gui, % hDebug ":Add", Text, % "hwndhDebugOuter w400 h400" ,
 }
 
@@ -46,7 +46,9 @@ UpdateDebug() {
 	global main
 	global hDebug, hDebugOuter
 	str := ""
-	str .= "Outer WINDOW: `t" main._SerializeRECT(main._WindowRECT)
+	str .= "PARENT hwnd: `t`t" main._hwnd "   (" Format("{:i}",main._hwnd) ")"
+	str .= "`nCHILD hwnd: `t`t" main.child._hwnd "   (" Format("{:i}",main.child._hwnd) ")"
+	str .= "`n`nOuter WINDOW: `t" main._SerializeRECT(main._WindowRECT)
 	str .= "`nOuter PAGE: `t`t" main._SerializeRECT(main._PageRECT)
 	str .= "`nOuter RANGE: `t`t" main._SerializeRECT(main._RangeRECT)
 	str .= "`n`nInner WINDOW: `t: " main._SerializeRECT(main.Child._WindowRECT)
@@ -511,7 +513,9 @@ class _CGui extends _CGuiBase {
 		}
 	}
 
+	; Handles mouse wheel messages
 	_OnWheel(wParam, lParam, msg, hwnd){
+		Critical
 		Static MK_SHIFT := 0x0004
 		Static SB_LINEMINUS := 0, SB_LINEPLUS := 1
 		Static WM_MOUSEWHEEL := 0x020A, WM_MOUSEHWHEEL := 0x020E
@@ -519,7 +523,7 @@ class _CGui extends _CGuiBase {
 		Static SB_HORZ := 0, SB_VERT = 1
 
 		MSG := (Msg = WM_MOUSEWHEEL ? WM_VSCROLL : WM_HSCROLL)
-
+		bar := msg - 0x114
 		MouseGetPos,,,,hcurrent,2
 		if (hcurrent = ""){
 			; No Sub-item found under cursor, get which main parent gui is under the cursor.
@@ -527,54 +531,35 @@ class _CGui extends _CGuiBase {
 		}
 		
 		; Drill down through Hwnds until one is found with scrollbars showing.
-		sb := this._DLL_GetScrollInfo(msg - 0x114)
-		if (sb.nMax != 0){
+		sb := this._DLL_GetScrollInfo(bar, hcurrent)
+		if (sb.nPage != 0){
 			has_scrollbars := sb.nMax
 		}
+		;MsgBox % "hwnd: " hcurrent " - " sb.nMax
 		while (!has_scrollbars){
 			hcurrent := this._DLL_GetParent(hcurrent)
-			sb := this._DLL_GetScrollInfo(msg - 0x114)
+			sb := this._DLL_GetScrollInfo(bar, hcurrent)
+			;MsgBox % "hwnd: " hcurrent " - " sb.nMax
 			if (sb.nMax != 0){
 				has_scrollbars := 1
 			}
 			if (hcurrent = 0){
 				; No parent found - end
-				SoundBeep
 				break
 			}
 		}
 		if (!has_scrollbars){
-			SoundBeep
 			return
 		}
-		;MsgBox % "*" sb.nMax "*"
-		; Look up CGui object for hwnd
-		;(_CGui._MessageArray[msg][hwnd]).(wParam, lParam, msg, hwnd)
-		/*
-		obj := _CGui._HwndLookup[hcurrent]
-		
-		if (!IsObject(obj)){
-			; No CGui Object found for that hwnd
-			return
-		}
-		*/
-		
-		;If (Msg = WM_MOUSEWHEEL) && This._Scroll_UseShift && (wParam & MK_SHIFT) {
-		;	Msg := WM_MOUSEHWHEEL
-		;}
 		
 		if (!ObjHasKey(_CGui._MessageArray[msg], hcurrent)){
 			return
 		}
-		;obj := _CGui._MessageArray[msg][hcurrent]
-		;SoundBeep
 
 		SB := ((wParam >> 16) > 0x7FFF) || (wParam < 0) ? SB_LINEPLUS : SB_LINEMINUS
 		
-		;obj._Scroll(sb, 0, MSG, hcurrent)
-		;obj._OnScroll(sb, 0, MSG, hcurrent)
-		(_CGui._MessageArray[msg][hwnd]).(sb, 0, msg, hwnd)
-		return 0
+		(_CGui._MessageArray[msg][hcurrent]).(sb, 0, msg, hcurrent)
+		;return 0
 
 	}
 	; ========================================== DLL CALLS ========================================
@@ -864,7 +849,7 @@ class _CGuiBase {
 				PosY := POINT.y + y_offset
 				Right := (PosX + Width)
 				Bottom := (PosY + height)
-				ToolTip % "Pos: " PosX "," PosY
+				;ToolTip % "Pos: " PosX "," PosY
 			}
 		} else {
 			GuiControlGet, Pos, % this._parent._hwnd ":Pos", % this._hwnd
