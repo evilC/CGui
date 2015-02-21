@@ -17,8 +17,8 @@ Gui, Menu, Menu1
 
 ;main.Child := new _Cgui(main, BoolToSgn(BorderState) "Border +Resize +Parent" main._hwnd)
 main.Child := main.Gui("new", BoolToSgn(BorderState) "Border +Resize +Parent" main._hwnd)
-main._DebugWindows := 1
-main.Child._DebugWindows := 1
+main._DebugWindows := 0
+main.Child._DebugWindows := 0
 main.NAme := "main"
 main.Child.NAme := "Child"
 
