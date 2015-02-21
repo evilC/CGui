@@ -17,8 +17,8 @@ Gui, Menu, Menu1
 
 ;main.Child := new _Cgui(main, BoolToSgn(BorderState) "Border +Resize +Parent" main._hwnd)
 main.Child := main.Gui("new", BoolToSgn(BorderState) "Border +Resize +Parent" main._hwnd)
-main._DebugWindows := 1
-main.Child._DebugWindows := 1
+main._DebugWindows := 0
+main.Child._DebugWindows := 0
 main.NAme := "main"
 main.Child.NAme := "Child"
 
@@ -505,7 +505,7 @@ class _CGui extends _CGuiBase {
 				v := 0
 			}
 			;OutputDebug, % "[ " this._FormatHwnd() " ] " this._SetStrLen(A_ThisFunc) "   Scrolling window by (x,y) " h ", " v " - new Pos: " this._ScrollInfos[bar].nPos
-			ToolTip % ScrollInfo.nPos "," ScrollInfo.nPage "," ScrollInfo.nMax
+			;ToolTip % ScrollInfo.nPos "," ScrollInfo.nPage "," ScrollInfo.nMax
 			this._DLL_ScrollWindows(h, v)
 		}
 		if (this._DebugWindows){
@@ -515,12 +515,12 @@ class _CGui extends _CGuiBase {
 
 	; Handles mouse wheel messages
 	_OnWheel(wParam, lParam, msg, hwnd){
-		Critical
 		Static MK_SHIFT := 0x0004
 		Static SB_LINEMINUS := 0, SB_LINEPLUS := 1
 		Static WM_MOUSEWHEEL := 0x020A, WM_MOUSEHWHEEL := 0x020E
 		Static WM_HSCROLL := 0x0114, WM_VSCROLL := 0x0115
 		Static SB_HORZ := 0, SB_VERT = 1
+		Critical
 
 		MSG := (Msg = WM_MOUSEWHEEL ? WM_VSCROLL : WM_HSCROLL)
 		bar := msg - 0x114
