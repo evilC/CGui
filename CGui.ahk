@@ -196,6 +196,7 @@ class _CGui extends _CGuiBase {
 	; ToDo: Needs work? buggy?
 	; OnMove seems to be called for a window when you scroll a window containing it.
 	_OnMove(wParam := 0, lParam := 0, msg := 0, hwnd := 0){
+		Critical
 		old := this._WindowRECT.clone()
 		this._GuiSetWindowRECT(wParam, lParam, msg, hwnd)
 		;ToolTip % A_ThisFunc "`nOld: " this._SerializeRECT(old) "`nNew: " this._SerializeRECT(this._WindowRECT)
@@ -264,6 +265,7 @@ class _CGui extends _CGuiBase {
 		;ToolTip % A_ThisFunc "`nOld: " this._SerializeRECT(oldrange) "`nNew: " this._SerializeRECT(this._RangeRECT)
 	}
 
+	/*
 	; Works out how big a window's caption / borders are and alters passed coords accordingly.
 	ConvertCoords(coords,hwnd){
 		static WS_BORDER := 0x00800000, SM_CYCAPTION := 4
@@ -282,10 +284,13 @@ class _CGui extends _CGuiBase {
 			TitleBar := 0
 		}
 		; Adjust coords
+		coords := {x: coords.x, y: coords.y}
+		;ToolTip % coords.x
 		coords.x -= Frame
 		coords.y -= TitleBar + Frame
 		return coords
 	}
+	*/
 
 	; ========================================== SCROLL BARS ======================================
 
@@ -688,8 +693,6 @@ class _CGuiBase {
 	
 	; Sets the Window RECT.
 	_GuiSetWindowRECT(wParam := 0, lParam := 0, msg := 0, hwnd := 0){
-		; ToDo: Tidy this and ConvertCoords - POINTs, assoc arrays etc jumbled up, needless passing of params.
-		;SoundBeep, 500, 100
 		Static SB_HORZ := 0, SB_VERT = 1
 		if (this._type = "w"){
 			; WinGetPos is relative to the SCREEN
@@ -701,9 +704,13 @@ class _CGuiBase {
 				Bottom := PosY + height
 				Right := PosX + Width
 			} else {
-				; The x and y coords do not change when the window scrolls...
+				; The x and y coords do not change when the window scrolls?
 				; Base code off these instead?
 				; x/y is coord of child RANGE relative to window RANGE.
+				;x := lParam & 0xffff
+				;y := lParam >> 16
+				/*
+				; Method flawed - wraps round to 65535 when you move off the top/left edge.
 				; Adjust to compensate for child border size
 				if (lParam = 0){
 					; called without params (ie not from a message) - work out x and y coord
@@ -715,9 +722,9 @@ class _CGuiBase {
 				} else {
 					POINT := {x: lParam & 0xffff, y: lParam >> 16}
 				}
-				;x := lParam & 0xffff
-				;y := lParam >> 16
-				/*
+				;POINT := this.ConvertCoords(POINT, this._hwnd)
+				*/
+
 				RECT := new _Struct(WinStructs.RECT)
 				DllCall("GetWindowRect", "uint", this._hwnd, "Ptr", RECT[])
 				POINT := this._DLL_ScreenToClient(this._parent._hwnd, RECT.Left, RECT.Top)
@@ -726,9 +733,7 @@ class _CGuiBase {
 				y_offset := this._parent._ScrollInfos[SB_VERT].nPos
 				PosX := POINT.x  + x_offset
 				PosY := POINT.y + y_offset
-				*/
 				
-				POINT := this.ConvertCoords(POINT, this._hwnd)
 				; Offset for scrollbar position
 				x_offset := this._parent._ScrollInfos[SB_HORZ].nPos
 				y_offset := this._parent._ScrollInfos[SB_VERT].nPos
