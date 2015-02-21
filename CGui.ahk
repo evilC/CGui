@@ -30,7 +30,7 @@ main.Child.Show("w150 h150 x0 y0")
 
 if (main._DebugWindows || main.child._DebugWindows){
 	Gui, New, hwndhDebug
-	Gui, % hDebug ":Show", w300 h100 x0 y0
+	Gui, % hDebug ":Show", w300 h140 x0 y0
 	Gui, % hDebug ":Add", Text, % "hwndhDebugOuter w400 h400" ,
 }
 
@@ -46,7 +46,9 @@ UpdateDebug() {
 	global main
 	global hDebug, hDebugOuter
 	str := ""
-	str .= "Outer WINDOW: `t" main._SerializeRECT(main._WindowRECT)
+	str .= "PARENT hwnd: `t`t" main._hwnd "   (" Format("{:i}",main._hwnd) ")"
+	str .= "`nCHILD hwnd: `t`t" main.child._hwnd "   (" Format("{:i}",main.child._hwnd) ")"
+	str .= "`n`nOuter WINDOW: `t" main._SerializeRECT(main._WindowRECT)
 	str .= "`nOuter PAGE: `t`t" main._SerializeRECT(main._PageRECT)
 	str .= "`nOuter RANGE: `t`t" main._SerializeRECT(main._RangeRECT)
 	str .= "`n`nInner WINDOW: `t: " main._SerializeRECT(main.Child._WindowRECT)
@@ -91,6 +93,7 @@ class _CGui extends _CGuiBase {
 		Static SB_HORZ := 0, SB_VERT = 1
 		static WM_MOVE := 0x0003, WM_SIZE := 0x0005
 		static WM_HSCROLL := 0x0114, WM_VSCROLL := 0x0115
+		Static WM_MOUSEWHEEL := 0x020A, WM_MOUSEHWHEEL := 0x020E
 
 		this._parent := parent
 
@@ -114,6 +117,10 @@ class _CGui extends _CGuiBase {
 		
 		; Register for move message.
 		this._RegisterMessage(WM_MOVE,this._OnMove)
+		
+		; Mouse Wheel
+		this._RegisterMessage(WM_MOUSEWHEEL,this._OnWheel)
+		this._RegisterMessage(WM_MOUSEHWHEEL,this._OnWheel)
 		
 		if (this._DebugWindows){
 			UpdateDebug()
@@ -196,6 +203,7 @@ class _CGui extends _CGuiBase {
 	; ToDo: Needs work? buggy?
 	; OnMove seems to be called for a window when you scroll a window containing it.
 	_OnMove(wParam := 0, lParam := 0, msg := 0, hwnd := 0){
+		Critical
 		old := this._WindowRECT.clone()
 		this._GuiSetWindowRECT(wParam, lParam, msg, hwnd)
 		;ToolTip % A_ThisFunc "`nOld: " this._SerializeRECT(old) "`nNew: " this._SerializeRECT(this._WindowRECT)
@@ -263,6 +271,34 @@ class _CGui extends _CGuiBase {
 		}
 		;ToolTip % A_ThisFunc "`nOld: " this._SerializeRECT(oldrange) "`nNew: " this._SerializeRECT(this._RangeRECT)
 	}
+
+	/*
+	; Works out how big a window's caption / borders are and alters passed coords accordingly.
+	ConvertCoords(coords,hwnd){
+		static WS_BORDER := 0x00800000, SM_CYCAPTION := 4
+		VarSetCapacity(wi,60)
+		DllCall("GetWindowInfo","PTR",hwnd,"PTR",&wi)
+		; Find size of frame (sizing handles - usually 3px)
+		Frame := NumGet(&wi,48,"UInt")
+		; Does this window have a "caption" (Title)
+		Caption := NumGet(&wi,36,"UInt")
+		Caption := Caption & WS_BORDER
+		if (Caption = WS_BORDER){
+			; Yes - get size of caption
+			TitleBar := DllCall("GetSystemMetrics","Int", SM_CYCAPTION)
+		} else {
+			; No, window is -Border
+			TitleBar := 0
+		}
+		; Adjust coords
+		coords := {x: coords.x, y: coords.y}
+		;ToolTip % coords.x
+		coords.x -= Frame
+		coords.y -= TitleBar + Frame
+		return coords
+	}
+	*/
+
 	; ========================================== SCROLL BARS ======================================
 
 	; Is the scrollbar at maximum? (ie all the way at the end).
@@ -358,7 +394,7 @@ class _CGui extends _CGuiBase {
 						v := 0
 					}
 					; Size-Scroll the contents.
-					this._DLL_ScrollWindow(h,v)
+					this._DLL_ScrollWindows(h,v)
 					if (bar){
 						this._ScrollInfos[bar].nPos -= v
 					} else {
@@ -397,12 +433,35 @@ class _CGui extends _CGuiBase {
 		;OutputDebug, % "SI: " ScrollInfo.nTrackPos ", Bar: " bar
 
 		if (wParam = SB_LINEUP || wParam = SB_LINEDOWN){
-			SoundBeep
 			; "Scrolls one line up / Scrolls one line down"
 			; Is an unimplemented flag
 			;SoundBeep, 100, 100
+			; wParam is direction
+			; msg is horiz / vert
+			amt := 0
+			line := 20
+			max := ScrollInfo.nMax - ScrollInfo.nPage
+			if (wParam){
+				; down
+				amt := ScrollInfo.nPos + line
+				if (amt > max){
+					amt := max
+				}
+			} else {
+				; up
+				amt := ScrollInfo.nPos - line
+				if (amt < ScrollInfo.nMin){
+					amt := ScrollInfo.nMin
+				}
+			}
+			newpos := amt
+			amt := ScrollInfo.nPos - amt
+			if (amt){
+				this._DLL_ScrollWindow(bar, amt)
+				this._GuiSetScrollbarPos(newpos, bar)
+			}
 		} else if (wParam = SB_PAGEUP || wParam = SB_PAGEDOWN){
-			SoundBeep
+			;SoundBeep
 			; "Scrolls one page up / Scrolls one page down"
 			; Is an unimplemented flag
 			;SoundBeep, 100, 100
@@ -418,6 +477,9 @@ class _CGui extends _CGuiBase {
 			; Not entirely sure what these are for, disable for now
 			SoundBeep, 100, 100
 		*/
+		} else if (wParam = SB_ENDSCROLL){
+			; Seem to not need to implement this.
+			; Routing it through to the main drag block breaks page scrolling (arrow buttons or wheel)
 		} else {
 			; Drag of scrollbar
 			; Handles SB_THUMBTRACK, SB_THUMBPOSITION, SB_ENDSCROLL Flags (Indicated by wParam has set LOWORD, Highest value is 0x8 which is SB_ENDSCROLL) ...
@@ -443,13 +505,63 @@ class _CGui extends _CGuiBase {
 				v := 0
 			}
 			;OutputDebug, % "[ " this._FormatHwnd() " ] " this._SetStrLen(A_ThisFunc) "   Scrolling window by (x,y) " h ", " v " - new Pos: " this._ScrollInfos[bar].nPos
-			this._DLL_ScrollWindow(h, v)
+			;ToolTip % ScrollInfo.nPos "," ScrollInfo.nPage "," ScrollInfo.nMax
+			this._DLL_ScrollWindows(h, v)
 		}
 		if (this._DebugWindows){
 			UpdateDebug()
 		}
 	}
 
+	; Handles mouse wheel messages
+	_OnWheel(wParam, lParam, msg, hwnd){
+		Static MK_SHIFT := 0x0004
+		Static SB_LINEMINUS := 0, SB_LINEPLUS := 1
+		Static WM_MOUSEWHEEL := 0x020A, WM_MOUSEHWHEEL := 0x020E
+		Static WM_HSCROLL := 0x0114, WM_VSCROLL := 0x0115
+		Static SB_HORZ := 0, SB_VERT = 1
+		Critical
+
+		MSG := (Msg = WM_MOUSEWHEEL ? WM_VSCROLL : WM_HSCROLL)
+		bar := msg - 0x114
+		MouseGetPos,,,,hcurrent,2
+		if (hcurrent = ""){
+			; No Sub-item found under cursor, get which main parent gui is under the cursor.
+			MouseGetPos,,,hcurrent
+		}
+		
+		; Drill down through Hwnds until one is found with scrollbars showing.
+		sb := this._DLL_GetScrollInfo(bar, hcurrent)
+		if (sb.nPage != 0){
+			has_scrollbars := sb.nMax
+		}
+		;MsgBox % "hwnd: " hcurrent " - " sb.nMax
+		while (!has_scrollbars){
+			hcurrent := this._DLL_GetParent(hcurrent)
+			sb := this._DLL_GetScrollInfo(bar, hcurrent)
+			;MsgBox % "hwnd: " hcurrent " - " sb.nMax
+			if (sb.nMax != 0){
+				has_scrollbars := 1
+			}
+			if (hcurrent = 0){
+				; No parent found - end
+				break
+			}
+		}
+		if (!has_scrollbars){
+			return
+		}
+		
+		if (!ObjHasKey(_CGui._MessageArray[msg], hcurrent)){
+			return
+		}
+
+		SB := ((wParam >> 16) > 0x7FFF) || (wParam < 0) ? SB_LINEPLUS : SB_LINEMINUS
+		
+		(_CGui._MessageArray[msg][hcurrent]).(sb, 0, msg, hcurrent)
+		;return 0
+
+	}
 	; ========================================== DLL CALLS ========================================
 
 	; ACCEPTS x, y
@@ -469,10 +581,27 @@ class _CGui extends _CGuiBase {
 	}
 	
 	; Wraps ScrollWindow() DLL Call.
-	_DLL_ScrollWindow(XAmount, YAmount, hwnd := 0){
+	_DLL_ScrollWindows(XAmount, YAmount, hwnd := 0){
 		; https://msdn.microsoft.com/en-us/library/windows/desktop/bb787591%28v=vs.85%29.aspx
 		if (!hwnd){
 			hwnd := this._hwnd
+		}
+		;tooltip % "Scrolling " hwnd
+		return DllCall("User32.dll\ScrollWindow", "Ptr", hwnd, "Int", XAmount, "Int", YAmount, "Ptr", 0, "Ptr", 0)
+	}
+
+	; Wraps ScrollWindow() DLL Call.
+	_DLL_ScrollWindow(bar, Amount, hwnd := 0){
+		; https://msdn.microsoft.com/en-us/library/windows/desktop/bb787591%28v=vs.85%29.aspx
+		if (!hwnd){
+			hwnd := this._hwnd
+		}
+		if (bar){
+			XAmount := 0
+			YAmount := Amount
+		} else {
+			XAmount := Amount
+			YAmount := 0
 		}
 		;tooltip % "Scrolling " hwnd
 		return DllCall("User32.dll\ScrollWindow", "Ptr", hwnd, "Int", XAmount, "Int", YAmount, "Ptr", 0, "Ptr", 0)
@@ -515,6 +644,13 @@ class _CGui extends _CGuiBase {
 		r := DllCall("User32.dll\GetScrollInfo", "Ptr", hwnd, "Int", fnBar, "Ptr", lpsi[], "UInt")
 		return lpsi
 		;Return r
+	}
+
+	_DLL_GetParent(hwnd := 0){
+		if (hwnd = 0){
+			hwnd := this._hwnd
+		}
+		return DllCall("GetParent", "Uint", hwnd, "Uint")
 	}
 
 	; ========================================== MESSAGES =========================================
@@ -664,7 +800,6 @@ class _CGuiBase {
 	
 	; Sets the Window RECT.
 	_GuiSetWindowRECT(wParam := 0, lParam := 0, msg := 0, hwnd := 0){
-		;SoundBeep, 500, 100
 		Static SB_HORZ := 0, SB_VERT = 1
 		if (this._type = "w"){
 			; WinGetPos is relative to the SCREEN
@@ -676,12 +811,27 @@ class _CGuiBase {
 				Bottom := PosY + height
 				Right := PosX + Width
 			} else {
-				; The x and y coords do not change when the window scrolls...
+				; The x and y coords do not change when the window scrolls?
 				; Base code off these instead?
 				; x/y is coord of child RANGE relative to window RANGE.
+				;x := lParam & 0xffff
+				;y := lParam >> 16
+				/*
+				; Method flawed - wraps round to 65535 when you move off the top/left edge.
 				; Adjust to compensate for child border size
-				x := lParam & 0xffff
-				y := lParam >> 16
+				if (lParam = 0){
+					; called without params (ie not from a message) - work out x and y coord
+					POINT := new _Struct(WinStructs.POINT)
+					POINT.x := 0
+					POINT.y := 0
+					; Find 0,0 of Child Page relative to Parent's Range
+					this._DLL_MapWindowPoints(this._hwnd, this._parent._hwnd, POINT, 1)
+				} else {
+					POINT := {x: lParam & 0xffff, y: lParam >> 16}
+				}
+				;POINT := this.ConvertCoords(POINT, this._hwnd)
+				*/
+
 				RECT := new _Struct(WinStructs.RECT)
 				DllCall("GetWindowRect", "uint", this._hwnd, "Ptr", RECT[])
 				POINT := this._DLL_ScreenToClient(this._parent._hwnd, RECT.Left, RECT.Top)
@@ -689,6 +839,13 @@ class _CGuiBase {
 				x_offset := this._parent._ScrollInfos[SB_HORZ].nPos
 				y_offset := this._parent._ScrollInfos[SB_VERT].nPos
 				PosX := POINT.x  + x_offset
+				PosY := POINT.y + y_offset
+				
+				; Offset for scrollbar position
+				x_offset := this._parent._ScrollInfos[SB_HORZ].nPos
+				y_offset := this._parent._ScrollInfos[SB_VERT].nPos
+				
+				PosX := POINT.x + x_offset
 				PosY := POINT.y + y_offset
 				Right := (PosX + Width)
 				Bottom := (PosY + height)

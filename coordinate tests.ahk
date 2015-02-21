@@ -1,6 +1,7 @@
 ;#include <_Struct>
 ;#include <WinStructs>
 ; ToDo: Scroll window hotkeys so we can check that values are still correct when window scrolled
+; Known Bug: Dragging Child to top / left causes crazy numbers (65536...) Singed / Unsigned / 2's comppliment issue?
 WM_MOVE := 0x0003, WM_SIZE := 0x0005
 OnMessage(WM_MOVE, "OnMove")
 
