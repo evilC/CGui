@@ -17,8 +17,8 @@ Gui, Menu, Menu1
 
 ;main.Child := new _Cgui(main, BoolToSgn(BorderState) "Border +Resize +Parent" main._hwnd)
 main.Child := main.Gui("new", BoolToSgn(BorderState) "Border +Resize +Parent" main._hwnd)
-main._DebugWindows := 1
-main.Child._DebugWindows := 1
+main._DebugWindows := 0
+main.Child._DebugWindows := 0
 main.NAme := "main"
 main.Child.NAme := "Child"
 
@@ -263,6 +263,30 @@ class _CGui extends _CGuiBase {
 		}
 		;ToolTip % A_ThisFunc "`nOld: " this._SerializeRECT(oldrange) "`nNew: " this._SerializeRECT(this._RangeRECT)
 	}
+
+	; Works out how big a window's caption / borders are and alters passed coords accordingly.
+	ConvertCoords(coords,hwnd){
+		static WS_BORDER := 0x00800000, SM_CYCAPTION := 4
+		VarSetCapacity(wi,60)
+		DllCall("GetWindowInfo","PTR",hwnd,"PTR",&wi)
+		; Find size of frame (sizing handles - usually 3px)
+		Frame := NumGet(&wi,48,"UInt")
+		; Does this window have a "caption" (Title)
+		Caption := NumGet(&wi,36,"UInt")
+		Caption := Caption & WS_BORDER
+		if (Caption = WS_BORDER){
+			; Yes - get size of caption
+			TitleBar := DllCall("GetSystemMetrics","Int", SM_CYCAPTION)
+		} else {
+			; No, window is -Border
+			TitleBar := 0
+		}
+		; Adjust coords
+		coords.x -= Frame
+		coords.y -= TitleBar + Frame
+		return coords
+	}
+
 	; ========================================== SCROLL BARS ======================================
 
 	; Is the scrollbar at maximum? (ie all the way at the end).
@@ -329,7 +353,7 @@ class _CGui extends _CGuiBase {
 				if (mask & SIF_RANGE){
 					; Range bits set
 					this._ScrollInfos[bar].nMin := RangeRECT[RECTProperties[bar].min]
-					this._ScrollInfos[bar].nMax := RangeRECT[RECTProperties[bar].max] - 1
+					this._ScrollInfos[bar].nMax := RangeRECT[RECTProperties[bar].max]
 				}
 				
 				if (mask & SIF_PAGE){
@@ -664,6 +688,7 @@ class _CGuiBase {
 	
 	; Sets the Window RECT.
 	_GuiSetWindowRECT(wParam := 0, lParam := 0, msg := 0, hwnd := 0){
+		; ToDo: Tidy this and ConvertCoords - POINTs, assoc arrays etc jumbled up, needless passing of params.
 		;SoundBeep, 500, 100
 		Static SB_HORZ := 0, SB_VERT = 1
 		if (this._type = "w"){
@@ -676,8 +701,23 @@ class _CGuiBase {
 				Bottom := PosY + height
 				Right := PosX + Width
 			} else {
-				x := lParam & 0xffff
-				y := lParam >> 16
+				; The x and y coords do not change when the window scrolls...
+				; Base code off these instead?
+				; x/y is coord of child RANGE relative to window RANGE.
+				; Adjust to compensate for child border size
+				if (lParam = 0){
+					; called without params (ie not from a message) - work out x and y coord
+					POINT := new _Struct(WinStructs.POINT)
+					POINT.x := 0
+					POINT.y := 0
+					; Find 0,0 of Child Page relative to Parent's Range
+					this._DLL_MapWindowPoints(this._hwnd, this._parent._hwnd, POINT, 1)
+				} else {
+					POINT := {x: lParam & 0xffff, y: lParam >> 16}
+				}
+				;x := lParam & 0xffff
+				;y := lParam >> 16
+				/*
 				RECT := new _Struct(WinStructs.RECT)
 				DllCall("GetWindowRect", "uint", this._hwnd, "Ptr", RECT[])
 				POINT := this._DLL_ScreenToClient(this._parent._hwnd, RECT.Left, RECT.Top)
@@ -686,8 +726,18 @@ class _CGuiBase {
 				y_offset := this._parent._ScrollInfos[SB_VERT].nPos
 				PosX := POINT.x  + x_offset
 				PosY := POINT.y + y_offset
+				*/
+				
+				POINT := this.ConvertCoords(POINT, this._hwnd)
+				; Offset for scrollbar position
+				x_offset := this._parent._ScrollInfos[SB_HORZ].nPos
+				y_offset := this._parent._ScrollInfos[SB_VERT].nPos
+				
+				PosX := POINT.x + x_offset
+				PosY := POINT.y + y_offset
 				Right := (PosX + Width)
 				Bottom := (PosY + height)
+				ToolTip % "Pos: " PosX "," PosY
 			}
 		} else {
 			GuiControlGet, Pos, % this._parent._hwnd ":Pos", % this._hwnd
