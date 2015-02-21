@@ -676,6 +676,10 @@ class _CGuiBase {
 				Bottom := PosY + height
 				Right := PosX + Width
 			} else {
+				; The x and y coords do not change when the window scrolls...
+				; Base code off these instead?
+				; x/y is coord of child RANGE relative to window RANGE.
+				; Adjust to compensate for child border size
 				x := lParam & 0xffff
 				y := lParam >> 16
 				RECT := new _Struct(WinStructs.RECT)
@@ -688,6 +692,7 @@ class _CGuiBase {
 				PosY := POINT.y + y_offset
 				Right := (PosX + Width)
 				Bottom := (PosY + height)
+				;ToolTip % "Pos: " PosX "," PosY
 			}
 		} else {
 			GuiControlGet, Pos, % this._parent._hwnd ":Pos", % this._hwnd
