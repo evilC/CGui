@@ -91,6 +91,7 @@ class _CGui extends _CGuiBase {
 		Static SB_HORZ := 0, SB_VERT = 1
 		static WM_MOVE := 0x0003, WM_SIZE := 0x0005
 		static WM_HSCROLL := 0x0114, WM_VSCROLL := 0x0115
+		Static WM_MOUSEWHEEL := 0x020A, WM_MOUSEHWHEEL := 0x020E
 
 		this._parent := parent
 
@@ -114,6 +115,10 @@ class _CGui extends _CGuiBase {
 		
 		; Register for move message.
 		this._RegisterMessage(WM_MOVE,this._OnMove)
+		
+		; Mouse Wheel
+		this._RegisterMessage(WM_MOUSEWHEEL,this._OnWheel)
+		this._RegisterMessage(WM_MOUSEHWHEEL,this._OnWheel)
 		
 		if (this._DebugWindows){
 			UpdateDebug()
@@ -387,7 +392,7 @@ class _CGui extends _CGuiBase {
 						v := 0
 					}
 					; Size-Scroll the contents.
-					this._DLL_ScrollWindow(h,v)
+					this._DLL_ScrollWindows(h,v)
 					if (bar){
 						this._ScrollInfos[bar].nPos -= v
 					} else {
@@ -426,12 +431,35 @@ class _CGui extends _CGuiBase {
 		;OutputDebug, % "SI: " ScrollInfo.nTrackPos ", Bar: " bar
 
 		if (wParam = SB_LINEUP || wParam = SB_LINEDOWN){
-			SoundBeep
 			; "Scrolls one line up / Scrolls one line down"
 			; Is an unimplemented flag
 			;SoundBeep, 100, 100
+			; wParam is direction
+			; msg is horiz / vert
+			amt := 0
+			line := 20
+			max := ScrollInfo.nMax - ScrollInfo.nPage
+			if (wParam){
+				; down
+				amt := ScrollInfo.nPos + line
+				if (amt > max){
+					amt := max
+				}
+			} else {
+				; up
+				amt := ScrollInfo.nPos - line
+				if (amt < ScrollInfo.nMin){
+					amt := ScrollInfo.nMin
+				}
+			}
+			newpos := amt
+			amt := ScrollInfo.nPos - amt
+			if (amt){
+				this._DLL_ScrollWindow(bar, amt)
+				this._GuiSetScrollbarPos(newpos, bar)
+			}
 		} else if (wParam = SB_PAGEUP || wParam = SB_PAGEDOWN){
-			SoundBeep
+			;SoundBeep
 			; "Scrolls one page up / Scrolls one page down"
 			; Is an unimplemented flag
 			;SoundBeep, 100, 100
@@ -447,6 +475,9 @@ class _CGui extends _CGuiBase {
 			; Not entirely sure what these are for, disable for now
 			SoundBeep, 100, 100
 		*/
+		} else if (wParam = SB_ENDSCROLL){
+			; Seem to not need to implement this.
+			; Routing it through to the main drag block breaks page scrolling (arrow buttons or wheel)
 		} else {
 			; Drag of scrollbar
 			; Handles SB_THUMBTRACK, SB_THUMBPOSITION, SB_ENDSCROLL Flags (Indicated by wParam has set LOWORD, Highest value is 0x8 which is SB_ENDSCROLL) ...
@@ -472,13 +503,80 @@ class _CGui extends _CGuiBase {
 				v := 0
 			}
 			;OutputDebug, % "[ " this._FormatHwnd() " ] " this._SetStrLen(A_ThisFunc) "   Scrolling window by (x,y) " h ", " v " - new Pos: " this._ScrollInfos[bar].nPos
-			this._DLL_ScrollWindow(h, v)
+			ToolTip % ScrollInfo.nPos "," ScrollInfo.nPage "," ScrollInfo.nMax
+			this._DLL_ScrollWindows(h, v)
 		}
 		if (this._DebugWindows){
 			UpdateDebug()
 		}
 	}
 
+	_OnWheel(wParam, lParam, msg, hwnd){
+		Static MK_SHIFT := 0x0004
+		Static SB_LINEMINUS := 0, SB_LINEPLUS := 1
+		Static WM_MOUSEWHEEL := 0x020A, WM_MOUSEHWHEEL := 0x020E
+		Static WM_HSCROLL := 0x0114, WM_VSCROLL := 0x0115
+		Static SB_HORZ := 0, SB_VERT = 1
+
+		MSG := (Msg = WM_MOUSEWHEEL ? WM_VSCROLL : WM_HSCROLL)
+
+		MouseGetPos,,,,hcurrent,2
+		if (hcurrent = ""){
+			; No Sub-item found under cursor, get which main parent gui is under the cursor.
+			MouseGetPos,,,hcurrent
+		}
+		
+		; Drill down through Hwnds until one is found with scrollbars showing.
+		sb := this._DLL_GetScrollInfo(msg - 0x114)
+		if (sb.nMax != 0){
+			has_scrollbars := sb.nMax
+		}
+		while (!has_scrollbars){
+			hcurrent := this._DLL_GetParent(hcurrent)
+			sb := this._DLL_GetScrollInfo(msg - 0x114)
+			if (sb.nMax != 0){
+				has_scrollbars := 1
+			}
+			if (hcurrent = 0){
+				; No parent found - end
+				SoundBeep
+				break
+			}
+		}
+		if (!has_scrollbars){
+			SoundBeep
+			return
+		}
+		;MsgBox % "*" sb.nMax "*"
+		; Look up CGui object for hwnd
+		;(_CGui._MessageArray[msg][hwnd]).(wParam, lParam, msg, hwnd)
+		/*
+		obj := _CGui._HwndLookup[hcurrent]
+		
+		if (!IsObject(obj)){
+			; No CGui Object found for that hwnd
+			return
+		}
+		*/
+		
+		;If (Msg = WM_MOUSEWHEEL) && This._Scroll_UseShift && (wParam & MK_SHIFT) {
+		;	Msg := WM_MOUSEHWHEEL
+		;}
+		
+		if (!ObjHasKey(_CGui._MessageArray[msg], hcurrent)){
+			return
+		}
+		;obj := _CGui._MessageArray[msg][hcurrent]
+		;SoundBeep
+
+		SB := ((wParam >> 16) > 0x7FFF) || (wParam < 0) ? SB_LINEPLUS : SB_LINEMINUS
+		
+		;obj._Scroll(sb, 0, MSG, hcurrent)
+		;obj._OnScroll(sb, 0, MSG, hcurrent)
+		(_CGui._MessageArray[msg][hwnd]).(sb, 0, msg, hwnd)
+		return 0
+
+	}
 	; ========================================== DLL CALLS ========================================
 
 	; ACCEPTS x, y
@@ -498,10 +596,27 @@ class _CGui extends _CGuiBase {
 	}
 	
 	; Wraps ScrollWindow() DLL Call.
-	_DLL_ScrollWindow(XAmount, YAmount, hwnd := 0){
+	_DLL_ScrollWindows(XAmount, YAmount, hwnd := 0){
 		; https://msdn.microsoft.com/en-us/library/windows/desktop/bb787591%28v=vs.85%29.aspx
 		if (!hwnd){
 			hwnd := this._hwnd
+		}
+		;tooltip % "Scrolling " hwnd
+		return DllCall("User32.dll\ScrollWindow", "Ptr", hwnd, "Int", XAmount, "Int", YAmount, "Ptr", 0, "Ptr", 0)
+	}
+
+	; Wraps ScrollWindow() DLL Call.
+	_DLL_ScrollWindow(bar, Amount, hwnd := 0){
+		; https://msdn.microsoft.com/en-us/library/windows/desktop/bb787591%28v=vs.85%29.aspx
+		if (!hwnd){
+			hwnd := this._hwnd
+		}
+		if (bar){
+			XAmount := 0
+			YAmount := Amount
+		} else {
+			XAmount := Amount
+			YAmount := 0
 		}
 		;tooltip % "Scrolling " hwnd
 		return DllCall("User32.dll\ScrollWindow", "Ptr", hwnd, "Int", XAmount, "Int", YAmount, "Ptr", 0, "Ptr", 0)
@@ -544,6 +659,13 @@ class _CGui extends _CGuiBase {
 		r := DllCall("User32.dll\GetScrollInfo", "Ptr", hwnd, "Int", fnBar, "Ptr", lpsi[], "UInt")
 		return lpsi
 		;Return r
+	}
+
+	_DLL_GetParent(hwnd := 0){
+		if (hwnd = 0){
+			hwnd := this._hwnd
+		}
+		return DllCall("GetParent", "Uint", hwnd, "Uint")
 	}
 
 	; ========================================== MESSAGES =========================================
