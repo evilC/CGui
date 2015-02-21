@@ -329,7 +329,7 @@ class _CGui extends _CGuiBase {
 				if (mask & SIF_RANGE){
 					; Range bits set
 					this._ScrollInfos[bar].nMin := RangeRECT[RECTProperties[bar].min]
-					this._ScrollInfos[bar].nMax := RangeRECT[RECTProperties[bar].max] - 1
+					this._ScrollInfos[bar].nMax := RangeRECT[RECTProperties[bar].max]
 				}
 				
 				if (mask & SIF_PAGE){
