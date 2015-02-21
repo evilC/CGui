@@ -24,14 +24,14 @@ main.Child.NAme := "Child"
 
 main.Child.Show("w150 h150 x0 y0")
 
-main._RangeRECT.Bottom := 500
-main._RangeRECT.Right := 500
-main._GuiSetScrollbarSize()
+;main._RangeRECT.Bottom := 500
+;main._RangeRECT.Right := 500
+;main._GuiSetScrollbarSize()
 
 if (main._DebugWindows || main.child._DebugWindows){
 	Gui, New, hwndhDebug
-	Gui, % hDebug ":Show", w500 h 200 x0 y0
-	Gui, % hDebug ":Add", Text, % "hwndhDebugOuter w400 h200" ,
+	Gui, % hDebug ":Show", w300 h100 x0 y0
+	Gui, % hDebug ":Add", Text, % "hwndhDebugOuter w400 h400" ,
 }
 
 Loop 8 {
@@ -52,7 +52,7 @@ UpdateDebug() {
 	str .= "`n`nInner WINDOW: `t: " main._SerializeRECT(main.Child._WindowRECT)
 	str .= "`nInner PAGE: `t`t: " main._SerializeRECT(main.Child._PageRECT)
 	str .= "`nInner RANGE: `t`t: " main._SerializeRECT(main.Child._RangeRECT)
-	str .= "`n`nTest RECT: `t`t: " main._SerializeRECT(main.Child._TestRECT)
+	;str .= "`n`nTest RECT: `t`t: " main._SerializeRECT(main.Child._TestRECT)
 	GuiControl, % hDebug ":", % hDebugOuter, % str
 	Sleep 100
 }
@@ -100,7 +100,7 @@ class _CGui extends _CGuiBase {
 		this._RangeRECT := new this.RECT()
 		this._PageRECT := new this.RECT()
 		this._WindowRECT := new this.RECT()
-		this._TestRECT := new this.RECT()
+		;this._TestRECT := new this.RECT()
 		
 		; Initialize scroll info array
 		this._ScrollInfos := {0: this._DLL_GetScrollInfo(SB_HORZ), 1: this._DLL_GetScrollInfo(SB_VERT)}
@@ -211,40 +211,16 @@ class _CGui extends _CGuiBase {
 	; old = the Child's old WindowRECT
 	_GuiChildChangedRange(Child, old, from := ""){
 		static opposites := {top: "bottom", left: "right", bottom: "top", right: "left"}
-		;SoundBeep
-		;this._GuiSetWindowRECT()
-		oldrange := this._RangeRECT.clone()
-		oldbottom := this._RangeRECT.Bottom
-		Childbottom := Child._WindowRECT.Bottom
 		shrank := 0
-		;ToolTip % "Child: " this._SerializeRECT(Child._WindowRECT)
-		;this._RangeRECT.Bottom := 500
-		;this._RangeRECT.Right := 500
-		;this._GuiSetScrollbarSize()
-		; Child grew Range
-		;ToolTip % this.NAme " grew`n" this._SerializeRECT(this._RangeRECT) "`nChild: " this._SerializeRECT(Child._WindowRECT)
-		return
 		
 		if (!this._RangeRECT.contains(Child._WindowRECT)){
 		;if (this._RangeRECT.Union(Child._WindowRECT)){
-			;SoundBeep
-			;this._RangeRECT.Union(Child._WindowRECT)
-			UpdateDebug()
-			;ToolTip % "Child RECT:`n" this._SerializeRECT(Child._WindowRECT)
-			;newBottom := this._RangeRECT.Bottom
-			this._RangeRECT.Bottom := 500
-			this._RangeRECT.Right := 500
-			; Child grew Range
-			;ToolTip % this.NAme " grew`n" this._SerializeRECT(this._RangeRECT) "`nChild: " this._SerializeRECT(Child._WindowRECT)
+			this._RangeRECT.Union(Child._WindowRECT)
 			this._GuiSetScrollbarSize()
 		} else {
-			return
 			; Detect if child touching edge of range.
 			; set the new _WindowRECT and find out how much we moved, and in what direction.
 			moved := this._GuiGetMoveAmount(old, Child._WindowRECT)
-			
-			;ToolTip % "moved: " this._SerializeRECT(moved)
-			;return
 			for dir in opposites {
 				;if (dir = "down"){
 					;ToolTip % "moved " this._SerializeRECT(moved)
@@ -592,14 +568,6 @@ class _CGui extends _CGuiBase {
 			this._hwnd := hwnd
 			this._WindowRECT := new this.RECT()
 			this._GuiSetWindowRECT()
-			/*
-			GuiControlGet, Pos, % this._parent._hwnd ":Pos", % this._hwnd
-			this._PageRECT := new this.RECT({Top: PosY, Left: PosX, Bottom: PosY + PosH, Right: PosX + PosW})
-			if (!this._parent._PageRECT.contains(this._PageRECT)){
-				this._parent._RangeRECT.Union(this._PageRECT)
-				this._parent._GuiSetScrollbarSize()
-			}
-			*/
 			if (this._DebugWindows){
 				UpdateDebug()
 			}
@@ -694,40 +662,6 @@ class _CGuiBase {
 
 	; ========================================== POSITION =========================================
 	
-	/*
-	; Sets the Window RECT.
-	; Also returns a RECT indicating the amount the window moved
-	_GuiSetWindowRECT(){
-		moved := new this.RECT()
-		WinGetPos, PosX, PosY, Width, Height, % "ahk_id " this._hwnd
-		if (!this._parent){
-			Bottom := PosY + height
-			Right := PosX + Width
-		} else {
-			POINT := this._DLL_ScreenToClient(this._parent._hwnd,PosX,PosY)
-			PosX := POINT.x
-			PosY := POINT.y
-			Bottom := POINT.y + height
-			Right := POINT.x + Width
-		}
-		
-		moved.Left := (PosX - this._WindowRECT.Left) * -1	; invert so positive means "we moved left"
-		this._WindowRECT.Left := PosX
-		moved.Top := (PosY - this._WindowRECT.Top) * -1
-		this._WindowRECT.Top := PosY
-		moved.Right := Right - this._WindowRECT.Right
-		this._WindowRECT.Right := Right
-		moved.Bottom := Bottom - this._WindowRECT.Bottom
-		this._WindowRECT.Bottom := Bottom
-			
-		if (this._DebugWindows){
-			UpdateDebug()
-		}
-		
-		return moved
-	}
-	*/
-	
 	; Sets the Window RECT.
 	_GuiSetWindowRECT(wParam := 0, lParam := 0, msg := 0, hwnd := 0){
 		;SoundBeep, 500, 100
@@ -744,59 +678,16 @@ class _CGuiBase {
 			} else {
 				x := lParam & 0xffff
 				y := lParam >> 16
-				;ToolTip % x "," y
-				;origin := new _Struct(WinStructs.POINT, {x: x, y: y})
-				;origin := new _Struct(WinStructs.POINT, {x: 0, y: 0})
 				RECT := new _Struct(WinStructs.RECT)
 				DllCall("GetWindowRect", "uint", this._hwnd, "Ptr", RECT[])
-				;POINT := this._DLL_ScreenToClient(this._hwnd, PosX, PosY)
 				POINT := this._DLL_ScreenToClient(this._parent._hwnd, RECT.Left, RECT.Top)
-				;POINT := this._DLL_ScreenToClient(this._parent._hwnd, x, y)
 				ScrollInfo := this._parent._DLL_GetScrollInfo(SB_VERT)
-				ToolTip % x "," y " / " this._parent._ScrollInfos[SB_VERT].nPos " / " ScrollInfo.nPos
-				;ToolTip % "top:" RECT.Top
-				;ToolTip % "coords: " POINT.x "," POINT.y
-				;ToolTip % "coords: " POINT.x + this._parent._ScrollInfos[SB_HORZ].nPos + 1 "," POINT.y + this._parent._ScrollInfos[SB_VERT].nPos + 1
-				
-				;ToolTip % "coords: " POINT.x "," POINT.y "`noffset: " this._parent._ScrollInfos[SB_HORZ].nPos "," this._parent._ScrollInfos[SB_VERT].nPos
-				;canvas := DllCall("GetWindow", "Uint", this._parent._hwnd, "uint", 5)
-				;MsgBox % "canvas - " this.FormatHex(canvas) ", child - " this._hwnd
-				;sleep 1000
-				;DllCall("ShowWindow", "Uint", canvas, "uint", 0)
-				;POINT := this._DLL_MapWindowPoints(this._hwnd, this._parent._hwnd, origin, 1)
-				;POINT.x -=8
-				;POINT.y -= 30
-				;ToolTip % POINT.y
-				;return
-				;ToolTip % "origin: " POINT.x
-				;return
-				; Coords need to be relative to window RANGE, not PAGE
-				;POINT := this._DLL_ScreenToClient(this._parent._hwnd, this._parent._ScrollInfos[SB_HORZ].nPos + PosX, this._parent._ScrollInfos[SB_VERT].nPos + PosY)
-				;ToolTip % PosY
-				;POINT := this._DLL_ScreenToClient(canvas, PosX, PosY)
-				;ToolTip % "origin: " POINT.y
-				;ToolTip % "Pos: " POINT.x "," POINT.y " - Offset: " this._CanvasOffset.y
-				;PT := this._DLL_ScreenToClient(this._parent._hwnd, 803, 1)
-				;ToolTip % PT.x "," PT.y " - " this._parent._ScrollInfos[SB_HORZ].nPos + 2 ", " this._parent._ScrollInfos[SB_HORZ].nMax ", " this._parent._ScrollInfos[SB_HORZ].nPage
-				;PosX := POINT.x
-				;PosY := POINT.y
 				x_offset := this._parent._ScrollInfos[SB_HORZ].nPos
 				y_offset := this._parent._ScrollInfos[SB_VERT].nPos
-				;ScrollInfo := this._parent._DLL_GetScrollInfo(SB_VERT)
-				;ToolTip % ScrollInfo.nPos "," this._parent._ScrollInfos[SB_VERT].nPos
-				;SoundBeep, 500, 100
-				;PosX := POINT.x  + x_offset
-				;PosY := POINT.y + y_offset
-				PosX := POINT.x
-				PosY := POINT.y
-				;Right := (PosX + Width) + x_offset
-				;Bottom := (PosY + height) + y_offset
+				PosX := POINT.x  + x_offset
+				PosY := POINT.y + y_offset
 				Right := (PosX + Width)
 				Bottom := (PosY + height)
-				
-				;ToolTip % "coords: " PosX "," PosY
-				;PosX += this._parent._ScrollInfos[SB_HORZ].nPos
-				;PosY += this._parent._ScrollInfos[SB_VERT].nPos
 			}
 		} else {
 			GuiControlGet, Pos, % this._parent._hwnd ":Pos", % this._hwnd
@@ -804,15 +695,15 @@ class _CGuiBase {
 			Bottom := PosY + PosH
 		}
 		
-		;this._WindowRECT.Left := PosX
-		;this._WindowRECT.Top := PosY
-		;this._WindowRECT.Right := Right
-		;this._WindowRECT.Bottom := Bottom
+		this._WindowRECT.Left := PosX
+		this._WindowRECT.Top := PosY
+		this._WindowRECT.Right := Right
+		this._WindowRECT.Bottom := Bottom
 		;ToolTip % A_ThisFunc "`n" this._SerializeRECT(this._WindowRECT) " - " y_offset
-		this._TestRECT.Left := PosX
-		this._TestRECT.Top := PosY
-		this._TestRECT.Right := Right
-		this._TestRECT.Bottom := Bottom
+		;this._TestRECT.Left := PosX
+		;this._TestRECT.Top := PosY
+		;this._TestRECT.Right := Right
+		;this._TestRECT.Bottom := Bottom
 		;ToolTip % A_ThisFunc "`n" this._SerializeRECT(this._TestRECT) " - " y_offset
 
 		if (this._DebugWindows){
@@ -878,24 +769,4 @@ class BoundFunc {
             return %fn%(args*)
         }
     }
-}
-
-CreatePoint(x,y, ByRef POINT){
-	VarSetCapacity(POINT, 8)
-	NumPut(x, POINT, 0, "Uint")
-	NumPut(y, POINT, 4, "Uint")
-	return POINT
-}
-
-GetPoints(ByRef POINT){
-	px := NumGet(POINT,0)
-	py := NumGet(POINT,4)
-	return {x: px, y: py}
-}
-
-_DLL_MapWindowPoints(hwndFrom, hwndTo, ByRef lpPoints, cPoints := 1){
-	; https://msdn.microsoft.com/en-gb/library/windows/desktop/dd145046(v=vs.85).aspx
-	;r := DllCall("User32.dll\MapWindowPoints", "Ptr", hwndFrom, "Ptr", hwndTo, "Ptr", lpPoints[], "Uint", cPoints, "Uint")
-	r := DllCall("User32.dll\MapWindowPoints", "Ptr", hwndFrom, "Ptr", hwndTo, "Ptr", &lpPoints, "Uint", cPoints, "Uint")
-	return lpPoints
 }
