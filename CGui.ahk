@@ -480,14 +480,18 @@ class _CGui extends _CGuiBase {
 		ScrollInfo := this._DLL_GetScrollInfo(bar)
 		;OutputDebug, % "SI: " ScrollInfo.nTrackPos ", Bar: " bar
 
-		if (wParam = SB_LINEUP || wParam = SB_LINEDOWN){
-			; "Scrolls one line up / Scrolls one line down"
+		if (wParam = SB_LINEUP || wParam = SB_LINEDOWN || wParam = SB_PAGEUP || wParam = SB_PAGEDOWN){
+			; Line scrolling (Arrows at end of scrollbar clicked) or Page scrolling (Area between handle and arrows clicked)
 			; Is an unimplemented flag
-			;SoundBeep, 100, 100
 			; wParam is direction
 			; msg is horiz / vert
+			if (wParam = SB_PAGEUP || wParam = SB_PAGEDOWN){
+				wParam -= 2
+				line := ScrollInfo.nPage
+			} else {
+				line := 20
+			}
 			amt := 0
-			line := 20
 			max := ScrollInfo.nMax - ScrollInfo.nPage
 			if (wParam){
 				; down
@@ -510,11 +514,6 @@ class _CGui extends _CGuiBase {
 				this._GuiSetScrollbarPos(newpos, bar)
 				this._DLL_ScrollWindow(bar, amt)
 			}
-		} else if (wParam = SB_PAGEUP || wParam = SB_PAGEDOWN){
-			;SoundBeep
-			; "Scrolls one page up / Scrolls one page down"
-			; Is an unimplemented flag
-			;SoundBeep, 100, 100
 		/*
 		} else if (wParam = SB_THUMBTRACK){
 			; "The user is dragging the scroll box. This message is sent repeatedly until the user releases the mouse button"
