@@ -207,9 +207,10 @@ class _CGui extends _CGuiBase {
 		old := this._WindowRECT.clone()
 		this._GuiSetWindowRECT(wParam, lParam, msg, hwnd)
 		;ToolTip % A_ThisFunc "`nOld: " this._SerializeRECT(old) "`nNew: " this._SerializeRECT(this._WindowRECT)
-		if (!this._WindowRECT.Equals(old)){
+		;if (!this._WindowRECT.Equals(old)){
+		;if (!this._parent._RangeRECT.contains(this._WindowRECT)){
 			this._parent._GuiChildChangedRange(this, old, "_OnMove")
-		}
+		;}
 		return
 	}
 
