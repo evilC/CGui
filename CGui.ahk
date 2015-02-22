@@ -18,8 +18,8 @@ Gui, Menu, Menu1
 
 ;main.Child := new _Cgui(main, BoolToSgn(BorderState) "Border +Resize +Parent" main._hwnd)
 main.Child := main.Gui("new", BoolToSgn(BorderState) "Border +Resize +Parent" main._hwnd)
-main._DebugWindows := 0
-main.Child._DebugWindows := 0
+main._DebugWindows := 1
+main.Child._DebugWindows := 1
 main.NAme := "main"
 main.Child.NAme := "Child"
 
@@ -74,16 +74,17 @@ DestroyChild:
 	;MsgBox % "Trying to Remove " main.Child2._hwnd " (" Format("{:i}",main.Child2._hwnd)  ")"
 	main.Child2._ChildControls := ""
 	;return
-	main._ChildGuis.Remove(main.Child2._hwnd)
 	for msg in _CGui._MessageArray {
 		for hwnd in _CGui._MessageArray[msg] {
 			if (hwnd = main.Child2._hwnd){
-				;MsgBox % "deleted " main.FormatHex(hwnd) " (" hwnd ") from message " main.FormatHex(msg)
-				_CGui._MessageArray[msg].Remove(hwnd)
+				; ALWAYS use .Remove(key, "") else indexes of remaining keys will be altered.
+				_CGui._MessageArray[msg].Remove(hwnd,"")
 			}
 		}
 	}
+	main._ChildGuis.Remove(main.Child2._hwnd,"")
 	main.Child2 := ""
+	;MsgBox UPDATING RANGE
 	main._GuiChildChangedRange()
 	return
 
@@ -281,6 +282,7 @@ class _CGui extends _CGuiBase {
 						; ... And if so, shrink our Range.
 						Count := 0
 						for childHwnd in this._ChildGuis {
+							childHwnd := childHwnd
 							if (!Count){
 								this._RangeRECT := new this.RECT()
 								this._RangeRECT.Union(this._ChildGuis[childHwnd]._WindowRECT)
