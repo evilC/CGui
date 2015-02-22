@@ -18,8 +18,8 @@ Gui, Menu, Menu1
 
 ;main.Child := new _Cgui(main, BoolToSgn(BorderState) "Border +Resize +Parent" main._hwnd)
 main.Child := main.Gui("new", BoolToSgn(BorderState) "Border +Resize +Parent" main._hwnd)
-main._DebugWindows := 1
-main.Child._DebugWindows := 1
+main._DebugWindows := 0
+main.Child._DebugWindows := 0
 main.NAme := "main"
 main.Child.NAme := "Child"
 
@@ -27,7 +27,7 @@ main.Child.Show("w150 h150 x00 y00")
 
 main.Child2 := main.Gui("new", "-Border +Resize +Parent" main._hwnd)
 main.Child2.Show("x200 y200")
-main.Child2.Gui("Add", "Text", "x0 y0 w100", main.Child2._hwnd " (" Format("{:i}",main.Child2._hwnd) ")" )
+main.Child2.myText := main.Child2.Gui("Add", "Text", "x0 y0 w100", main.Child2._hwnd " (" Format("{:i}",main.Child2._hwnd) ")" )
 
 ;main._RangeRECT.Bottom := 500
 ;main._RangeRECT.Right := 500
@@ -71,21 +71,8 @@ ToggleBorder:
 	return
 
 DestroyChild:
-	;MsgBox % "Trying to Remove " main.Child2._hwnd " (" Format("{:i}",main.Child2._hwnd)  ")"
-	main.Child2._ChildControls := ""
-	;return
-	for msg in _CGui._MessageArray {
-		for hwnd in _CGui._MessageArray[msg] {
-			if (hwnd = main.Child2._hwnd){
-				; ALWAYS use .Remove(key, "") else indexes of remaining keys will be altered.
-				_CGui._MessageArray[msg].Remove(hwnd,"")
-			}
-		}
-	}
-	main._ChildGuis.Remove(main.Child2._hwnd,"")
+	main.Child2.Destroy()
 	main.Child2 := ""
-	;MsgBox UPDATING RANGE
-	main._GuiChildChangedRange()
 	return
 
 Esc::
@@ -157,6 +144,27 @@ class _CGui extends _CGuiBase {
 		; If top touches range top, left touches page left, right touches page right, or bottom touches page bottom...
 		; Removing this GuiControl should trigger a RANGE CHANGE.
 		; Same for Gui, Hide?
+	}
+
+	Destroy(){
+		this._ChildControls := ""
+		for msg in _CGui._MessageArray {
+			for hwnd in _CGui._MessageArray[msg] {
+				if (hwnd = this._hwnd){
+					; ALWAYS use .Remove(key, "") else indexes of remaining keys will be altered.
+					_CGui._MessageArray[msg].Remove(hwnd,"")
+				}
+			}
+		}
+		;MsgBox % this._hwnd
+		this._parent._ChildGuis.Remove(this._hwnd, "")
+		this._parent._GuiChildChangedRange()
+		; Remove all child objects that could stop __Delete firing.
+		for key in this {
+			if (this[key]._parent = this){
+				this[key]._parent := ""
+			}
+		}
 	}
 	
 	; Simple patch to prefix Gui commands with HWND
@@ -759,6 +767,15 @@ class _CGui extends _CGuiBase {
 			; If top touches range top, left touches page left, right touches page right, or bottom touches page bottom...
 			; Removing this GuiControl should trigger a RANGE CHANGE.
 			; Same for Hiding a GuiControl?
+		}
+		
+		; Removes a GUIControl.
+		; Does NOT remove the last reference to the Control on the parent, call Destroy, then unset manually to fire __Delete()
+		; eg this.childcontrol.Destroy()
+		; this.childcontrol := ""
+		Destroy(){
+			this._parent._ChildControls.Remove(this._hwnd, "")
+			this._parent._GuiChildChangedRange()
 		}
 	}
 
