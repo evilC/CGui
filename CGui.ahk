@@ -13,6 +13,7 @@ BorderState := 1
 main := new _CGui(0,"+Resize")
 main.Show("w300 h300 y0", "CGui Demo")
 Menu, Menu1, Add, Border, ToggleBorder
+Menu, Menu1, Add, Destroy, DestroyChild
 Gui, Menu, Menu1
 
 ;main.Child := new _Cgui(main, BoolToSgn(BorderState) "Border +Resize +Parent" main._hwnd)
@@ -22,7 +23,11 @@ main.Child._DebugWindows := 0
 main.NAme := "main"
 main.Child.NAme := "Child"
 
-main.Child.Show("w150 h150 x0 y0")
+main.Child.Show("w150 h150 x00 y00")
+
+main.Child2 := main.Gui("new", "-Border +Resize +Parent" main._hwnd)
+main.Child2.Show("x200 y200")
+main.Child2.Gui("Add", "Text", "x0 y0 w100", main.Child2._hwnd " (" Format("{:i}",main.Child2._hwnd) ")" )
 
 ;main._RangeRECT.Bottom := 500
 ;main._RangeRECT.Right := 500
@@ -63,6 +68,23 @@ ToggleBorder:
 	BorderState := !BorderState
 	Gui, % main.Child._hwnd ":" BoolToSgn(BorderState) "Border"
 	
+	return
+
+DestroyChild:
+	;MsgBox % "Trying to Remove " main.Child2._hwnd " (" Format("{:i}",main.Child2._hwnd)  ")"
+	main.Child2._ChildControls := ""
+	;return
+	main._ChildGuis.Remove(main.Child2._hwnd)
+	for msg in _CGui._MessageArray {
+		for hwnd in _CGui._MessageArray[msg] {
+			if (hwnd = main.Child2._hwnd){
+				;MsgBox % "deleted " main.FormatHex(hwnd) " (" hwnd ") from message " main.FormatHex(msg)
+				_CGui._MessageArray[msg].Remove(hwnd)
+			}
+		}
+	}
+	main.Child2 := ""
+	main._GuiChildChangedRange()
 	return
 
 Esc::
@@ -127,7 +149,10 @@ class _CGui extends _CGuiBase {
 		}
 	}
 
-	__Destroy(){
+	__Delete(){
+		;MsgBox % "GUI DELETE - " this._hwnd
+		Gui, % this._hwnd ":Destroy"
+		;this._parent._GuiChildChangedRange()
 		; If top touches range top, left touches page left, right touches page right, or bottom touches page bottom...
 		; Removing this GuiControl should trigger a RANGE CHANGE.
 		; Same for Gui, Hide?
@@ -216,10 +241,24 @@ class _CGui extends _CGuiBase {
 
 	; A Child of this window changed it's usage of this window's RANGE (in other words, it moved or changed size)
 	; old = the Child's old WindowRECT
-	_GuiChildChangedRange(Child, old, from := ""){
+	_GuiChildChangedRange(Child := 0, old := 0, from := ""){
 		static opposites := {top: "bottom", left: "right", bottom: "top", right: "left"}
 		shrank := 0
 		
+		if (child = 0){
+			; Destroy
+			Count := 0
+			for childHwnd in this._ChildGuis {
+				if (!Count){
+					this._RangeRECT := new this.RECT()
+					this._RangeRECT.Union(this._ChildGuis[childHwnd]._WindowRECT)
+					continue
+				}
+				this._RangeRECT.Union(this._ChildGuis[childHwnd]._WindowRECT)
+			}
+			this._GuiSetScrollbarSize()
+			return
+		}
 		if (!this._RangeRECT.contains(Child._WindowRECT)){
 		;if (this._RangeRECT.Union(Child._WindowRECT)){
 			this._RangeRECT.Union(Child._WindowRECT)
@@ -710,7 +749,11 @@ class _CGui extends _CGuiBase {
 			}
 		}
 		
-		__Destroy(){
+		__Delete(){
+			;MsgBox % "CONTROL DELETE - " this._hwnd
+			;Gui, % this._parent.PrefixHwnd("Add"), % ctrltype, % "hwndhwnd " options, % text
+			DllCall("DestroyWindow", "UInt", this._hwnd)
+			
 			; If top touches range top, left touches page left, right touches page right, or bottom touches page bottom...
 			; Removing this GuiControl should trigger a RANGE CHANGE.
 			; Same for Hiding a GuiControl?
