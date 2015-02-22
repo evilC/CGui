@@ -11,7 +11,7 @@
 BorderState := 1
 
 main := new _CGui(0,"+Resize")
-main.Show("w300 h300 y0", "CGui Demo")
+main.Show("w300 h300 y0", "CGui Demo - " main._hwnd)
 Menu, Menu1, Add, Border, ToggleBorder
 Menu, Menu1, Add, Destroy, DestroyChild
 Gui, Menu, Menu1
@@ -23,7 +23,7 @@ main.Child._DebugWindows := 0
 main.NAme := "main"
 main.Child.NAme := "Child"
 
-main.Child.Show("w150 h150 x00 y00")
+main.Child.Show("w150 h150 x00 y00", main.child._hwnd)
 
 main.Child2 := main.Gui("new", "-Border +Resize +Parent" main._hwnd)
 main.Child2.Show("x200 y200")
@@ -574,31 +574,29 @@ class _CGui extends _CGuiBase {
 
 		MSG := (Msg = WM_MOUSEWHEEL ? WM_VSCROLL : WM_HSCROLL)
 		bar := msg - 0x114
+		has_scrollbars := 0
 		MouseGetPos,,,,hcurrent,2
-		if (hcurrent = ""){
+		if (hcurrent != ""){
+			has_scrollbars :=  this._HasScrollbar(bar, hcurrent)
+		}
+		if (has_scrollbars = 0){
 			; No Sub-item found under cursor, get which main parent gui is under the cursor.
 			MouseGetPos,,,hcurrent
+			has_scrollbars :=  this._HasScrollbar(bar, hcurrent)
 		}
-		
 		; Drill down through Hwnds until one is found with scrollbars showing.
-		sb := this._DLL_GetScrollInfo(bar, hcurrent)
-		if (sb.nPage != 0){
-			has_scrollbars := sb.nMax
-		}
-		;MsgBox % "hwnd: " hcurrent " - " sb.nMax
 		while (!has_scrollbars){
 			hcurrent := this._DLL_GetParent(hcurrent)
-			sb := this._DLL_GetScrollInfo(bar, hcurrent)
-			;MsgBox % "hwnd: " hcurrent " - " sb.nMax
-			if (sb.nMax != 0){
-				has_scrollbars := 1
-			}
+			has_scrollbars := this._HasScrollbar(bar, hcurrent)
 			if (hcurrent = 0){
 				; No parent found - end
 				break
 			}
 		}
+		; No candidates found - route scroll to main window
 		if (!has_scrollbars){
+			;MsgBox % this.FormatHex(hwnd)
+			hcurrent := hwnd
 			return
 		}
 		
@@ -741,6 +739,14 @@ class _CGui extends _CGuiBase {
 		return "T: " RECT.Top "`tL: " RECT.Left "`tB: " RECT.Bottom "`tR: " RECT.Right
 	}
 	
+	_HasScrollbar(bar, hwnd){
+		sb := this._DLL_GetScrollInfo(bar, hwnd)
+		if (sb.nPage && (sb.nPage <= sb.nMax)){
+			return 1
+		} else {
+			return 0
+		}
+	}
 	; ========================================== CLASSES ==========================================
 	
 	; Wraps GuiControls into an Object
