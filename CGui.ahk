@@ -207,11 +207,9 @@ class _CGui extends _CGuiBase {
 		old := this._WindowRECT.clone()
 		this._GuiSetWindowRECT(wParam, lParam, msg, hwnd)
 		;ToolTip % A_ThisFunc "`nOld: " this._SerializeRECT(old) "`nNew: " this._SerializeRECT(this._WindowRECT)
-		;if (!this._WindowRECT.Equals(old)){
-			;SoundBeep, 1000, 100
-			; ToDo: This is tripping when it should not.
+		if (!this._WindowRECT.Equals(old)){
 			this._parent._GuiChildChangedRange(this, old, "_OnMove")
-		;}
+		}
 		return
 	}
 
@@ -457,8 +455,10 @@ class _CGui extends _CGuiBase {
 			newpos := amt
 			amt := ScrollInfo.nPos - amt
 			if (amt){
-				this._DLL_ScrollWindow(bar, amt)
+				; IMPORTANT! Update scrollbar pos BEFORE scrolling window.
+				; Scrolling window trips _OnMove for children, and scrollbar pos is used by them to determine coordinates.
 				this._GuiSetScrollbarPos(newpos, bar)
+				this._DLL_ScrollWindow(bar, amt)
 			}
 		} else if (wParam = SB_PAGEUP || wParam = SB_PAGEDOWN){
 			;SoundBeep
