@@ -19,7 +19,7 @@ Gui, Menu, Menu1
 ;main.Child := new _Cgui(main, BoolToSgn(BorderState) "Border +Resize +Parent" main._hwnd)
 main.Child := main.Gui("new", BoolToSgn(BorderState) "Border +Resize +Parent" main._hwnd)
 main._DebugWindows := 0
-main.Child._DebugWindows := 0
+main.Child._DebugWindows := main._DebugWindows
 main.NAme := "main"
 main.Child.NAme := "Child"
 
@@ -28,14 +28,15 @@ main.Child.Show("w150 h150 x00 y00", main.child._hwnd)
 main.Child2 := main.Gui("new", "-Border +Resize +Parent" main._hwnd)
 main.Child2.Show("x200 y200")
 main.Child2.myText := main.Child2.Gui("Add", "Text", "x0 y0 w100", main.Child2._hwnd " (" Format("{:i}",main.Child2._hwnd) ")" )
-
+main.Child2.NAme := "Child2"
+main.Child2._DebugWindows := main._DebugWindows
 ;main._RangeRECT.Bottom := 500
 ;main._RangeRECT.Right := 500
 ;main._GuiSetScrollbarSize()
 
 if (main._DebugWindows || main.child._DebugWindows){
 	Gui, New, hwndhDebug
-	Gui, % hDebug ":Show", w300 h140 x0 y0
+	Gui, % hDebug ":Show", w300 h180 x0 y0
 	Gui, % hDebug ":Add", Text, % "hwndhDebugOuter w400 h400" ,
 }
 
@@ -59,6 +60,7 @@ UpdateDebug() {
 	str .= "`n`nInner WINDOW: `t: " main._SerializeRECT(main.Child._WindowRECT)
 	str .= "`nInner PAGE: `t`t: " main._SerializeRECT(main.Child._PageRECT)
 	str .= "`nInner RANGE: `t`t: " main._SerializeRECT(main.Child._RangeRECT)
+	str .= "`n`nCHILD2 WINDOW: `t: " main._SerializeRECT(main.Child2._WindowRECT)
 	;str .= "`n`nTest RECT: `t`t: " main._SerializeRECT(main.Child._TestRECT)
 	GuiControl, % hDebug ":", % hDebugOuter, % str
 	Sleep 100
@@ -216,6 +218,7 @@ class _CGui extends _CGuiBase {
 		static SIZE_RESTORED := 0, SIZE_MINIMIZED := 1, SIZE_MAXIMIZED := 2, SIZE_MAXSHOW := 3, SIZE_MAXHIDE := 4
 		
 		if (wParam = SIZE_RESTORED || wParam = SIZE_MAXIMIZED){
+			old := this._WindowRECT.clone()
 			w := lParam & 0xffff
 			h := lParam >> 16
 			if (w != this._PageRECT.Right || h != this._PageRECT.Bottom){
@@ -223,9 +226,11 @@ class _CGui extends _CGuiBase {
 				this._PageRECT.Right := w
 				this._PageRECT.Bottom := h
 			}
-			
+			this._GuiSetWindowRECT()
 			; Adjust Scrollbars if required
 			this._GuiSetScrollbarSize()
+			;this._parent._GuiSetScrollbarSize()
+			this._parent._GuiChildChangedRange(this, old)
 		}
 		if (this._DebugWindows){
 			UpdateDebug()
@@ -243,14 +248,14 @@ class _CGui extends _CGuiBase {
 		;ToolTip % A_ThisFunc "`nOld: " this._SerializeRECT(old) "`nNew: " this._SerializeRECT(this._WindowRECT)
 		;if (!this._WindowRECT.Equals(old)){
 		;if (!this._parent._RangeRECT.contains(this._WindowRECT)){
-			this._parent._GuiChildChangedRange(this, old, "_OnMove")
+			this._parent._GuiChildChangedRange(this, old)
 		;}
 		return
 	}
 
 	; A Child of this window changed it's usage of this window's RANGE (in other words, it moved or changed size)
 	; old = the Child's old WindowRECT
-	_GuiChildChangedRange(Child := 0, old := 0, from := ""){
+	_GuiChildChangedRange(Child := 0, old := 0){
 		static opposites := {top: "bottom", left: "right", bottom: "top", right: "left"}
 		shrank := 0
 		
@@ -261,6 +266,7 @@ class _CGui extends _CGuiBase {
 				if (!Count){
 					this._RangeRECT := new this.RECT()
 					this._RangeRECT.Union(this._ChildGuis[childHwnd]._WindowRECT)
+					Count++
 					continue
 				}
 				this._RangeRECT.Union(this._ChildGuis[childHwnd]._WindowRECT)
@@ -281,32 +287,41 @@ class _CGui extends _CGuiBase {
 					;ToolTip % "moved " this._SerializeRECT(moved)
 				;}
 				if (moved[dir] > 0){
-					shrank := 1
+					;shrank := 1
 					opp := opposites[dir]
-					;SoundBeep
+					;ToolTip % this.NAme "-" dir "`nOld: " old[opp] " = " this._RangeRECT[opp] " ?"
 					if (old[opp] = this._RangeRECT[opp]){
-						; The child was touching an edge of our RANGE, and moved away from it ...
-						; ... Union WindowRECTs of all *other* children to see if this child is the only one needing that part of the range ...
-						; ... And if so, shrink our Range.
-						Count := 0
-						for childHwnd in this._ChildGuis {
-							childHwnd := childHwnd
-							if (!Count){
-								this._RangeRECT := new this.RECT()
-								this._RangeRECT.Union(this._ChildGuis[childHwnd]._WindowRECT)
-								continue
-							}
-							if (childHwnd = child._hwnd){
-								continue
-							}
-							this._RangeRECT.Union(this._ChildGuis[childHwnd]._WindowRECT)
-						}
-						;ToolTip % "Child: " this._SerializeRECT(old[childHwnd]._WindowRECT) "`nfrom: " from
-						if (!this._RangeRECT.contains(old[childHwnd]._WindowRECT)){
-							this._RangeRECT.Union(Child._WindowRECT)
-							this._GuiSetScrollbarSize()
-						}
+						shrank := 1
+						break
 					}
+				}
+			}
+			if (shrank){
+				; The child was touching an edge of our RANGE, and moved away from it ...
+				; ... Union WindowRECTs of all *other* children to see if this child is the only one needing that part of the range ...
+				; ... And if so, shrink our Range.
+
+				Count := 0
+				for childHwnd in this._ChildGuis {
+					if (childHwnd = child._hwnd){
+						;MsgBox % "Skipping " this._ChildGuis[childHwnd].NAme
+						continue
+					}
+					if (!Count){
+						this._RangeRECT := new this.RECT()
+						this._RangeRECT.Union(this._ChildGuis[childHwnd]._WindowRECT)
+						;MsgBox % "including " this._ChildGuis[childHwnd].NAme
+						Count++
+						continue
+					}
+					;MsgBox % "including " this._ChildGuis[childHwnd].NAme
+					this._RangeRECT.Union(this._ChildGuis[childHwnd]._WindowRECT)
+					Count++
+				}
+				;if (!this._RangeRECT.contains(old[childHwnd]._WindowRECT)){
+				if (!this._RangeRECT.contains(Child._WindowRECT)){
+					this._RangeRECT.Union(Child._WindowRECT)
+					this._GuiSetScrollbarSize()
 				}
 			}
 			/*
@@ -918,6 +933,7 @@ class _CGuiBase {
 				Right := (PosX + Width)
 				Bottom := (PosY + height)
 				;ToolTip % "Pos: " PosX "," PosY
+				;ToolTip % this.NAme	"`n" this._SerializeRECT(this._WindowRECT) " - " y_offset
 			}
 		} else {
 			GuiControlGet, Pos, % this._parent._hwnd ":Pos", % this._hwnd
@@ -929,7 +945,7 @@ class _CGuiBase {
 		this._WindowRECT.Top := PosY
 		this._WindowRECT.Right := Right
 		this._WindowRECT.Bottom := Bottom
-		;ToolTip % A_ThisFunc "`n" this._SerializeRECT(this._WindowRECT) " - " y_offset
+		;ToolTip % this.NAme	"`n" this._SerializeRECT(this._WindowRECT) " - " y_offset
 		;this._TestRECT.Left := PosX
 		;this._TestRECT.Top := PosY
 		;this._TestRECT.Right := Right
@@ -946,10 +962,26 @@ class _CGuiBase {
 	_GuiGetMoveAmount(old, new){
 		;ToolTip % "O: " this._SerializeRECT(old) "`nN: " this._SerializeRECT(new)
 		moved := new this.RECT()
-		moved.Left := (new.Left - old.Left) * -1	; invert so positive means "we moved left"
-		moved.Top := (new.Top - old.Top) * -1
-		moved.Right := new.Right - old.Right
-		moved.Bottom := new.Bottom - old.Bottom
+		if ( (new.Right - new.Left) = (old.Right - old.Left) && (new.Bottom - new.Top) = (old.Bottom - old.Top) ){
+			; Moved
+			moved.Left := (new.Left - old.Left) * -1	; invert so positive means "we moved left"
+			moved.Top := (new.Top - old.Top) * -1
+			moved.Right := new.Right - old.Right
+			moved.Bottom := new.Bottom - old.Bottom
+		} else {
+			; resized
+			/*
+			moved.Left := (new.Left - old.Left)
+			moved.Top := (new.Top - old.Top)
+			moved.Right := (new.Right - old.Right) * -1
+			moved.Bottom := (new.Bottom - old.Bottom) * -1
+			*/
+			; Swap values, as code calling this is based around Move rather than size, and checks opposite edges.
+			moved.Right := (new.Left - old.Left)
+			moved.Bottom := (new.Top - old.Top)
+			moved.Left := (new.Right - old.Right) * -1
+			moved.Top := (new.Bottom - old.Bottom) * -1
+		}
 		return moved
 	}
 	
