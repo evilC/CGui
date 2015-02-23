@@ -106,6 +106,7 @@ class _CGui extends _CGuiBase {
 		static WM_MOVE := 0x0003, WM_SIZE := 0x0005
 		static WM_HSCROLL := 0x0114, WM_VSCROLL := 0x0115
 		Static WM_MOUSEWHEEL := 0x020A, WM_MOUSEHWHEEL := 0x020E
+		;static WM_CLOSE := 0x0010
 
 		this._parent := parent
 
@@ -133,6 +134,9 @@ class _CGui extends _CGuiBase {
 		; Mouse Wheel
 		this._RegisterMessage(WM_MOUSEWHEEL,this._OnWheel)
 		this._RegisterMessage(WM_MOUSEHWHEEL,this._OnWheel)
+		
+		; Close Gui - need method
+		;this._RegisterMessage(WM_CLOSE, this._OnExit)
 		
 		if (this._DebugWindows){
 			UpdateDebug()
@@ -209,49 +213,6 @@ class _CGui extends _CGuiBase {
 		return RECT
 	}
 	*/
-
-	; Adjust this._PageRECT when Gui Size Changes (ie it was Resized)
-	; Handles WM_SIZE message
-	; https://msdn.microsoft.com/en-us/library/windows/desktop/ms632646%28v=vs.85%29.aspx
-	_OnSize(wParam, lParam, msg, hwnd){
-		; ToDo: Need to check if hwnd matches this._hwnd ?
-		static SIZE_RESTORED := 0, SIZE_MINIMIZED := 1, SIZE_MAXIMIZED := 2, SIZE_MAXSHOW := 3, SIZE_MAXHIDE := 4
-		
-		if (wParam = SIZE_RESTORED || wParam = SIZE_MAXIMIZED){
-			old := this._WindowRECT.clone()
-			w := lParam & 0xffff
-			h := lParam >> 16
-			if (w != this._PageRECT.Right || h != this._PageRECT.Bottom){
-				; Gui Size Changed - update PAGERECT
-				this._PageRECT.Right := w
-				this._PageRECT.Bottom := h
-			}
-			this._GuiSetWindowRECT()
-			; Adjust Scrollbars if required
-			this._GuiSetScrollbarSize()
-			;this._parent._GuiSetScrollbarSize()
-			this._parent._GuiChildChangedRange(this, old)
-		}
-		if (this._DebugWindows){
-			UpdateDebug()
-		}
-	}
-	
-	; Called when a GUI Moves.
-	; If the GUI moves outside it's parent's RECT, enlarge the parent's RANGE
-	; ToDo: Needs work? buggy?
-	; OnMove seems to be called for a window when you scroll a window containing it.
-	_OnMove(wParam := 0, lParam := 0, msg := 0, hwnd := 0){
-		Critical
-		old := this._WindowRECT.clone()
-		this._GuiSetWindowRECT(wParam, lParam, msg, hwnd)
-		;ToolTip % A_ThisFunc "`nOld: " this._SerializeRECT(old) "`nNew: " this._SerializeRECT(this._WindowRECT)
-		;if (!this._WindowRECT.Equals(old)){
-		;if (!this._parent._RangeRECT.contains(this._WindowRECT)){
-			this._parent._GuiChildChangedRange(this, old)
-		;}
-		return
-	}
 
 	; A Child of this window changed it's usage of this window's RANGE (in other words, it moved or changed size)
 	; old = the Child's old WindowRECT
@@ -475,155 +436,6 @@ class _CGui extends _CGuiBase {
 		return lpsi
 	}
 
-	; A scrollbar was dragged
-	_OnScroll(wParam, lParam, msg, hwnd){
-		;SoundBeep
-		; Handles:
-		; WM_VSCROLL https://msdn.microsoft.com/en-gb/library/windows/desktop/bb787577(v=vs.85).aspx
-		; WM_HSCROLL https://msdn.microsoft.com/en-gb/library/windows/desktop/bb787575(v=vs.85).aspx
-		Critical
-		static WM_HSCROLL := 0x0114, WM_VSCROLL := 0x0115
-		Static SB_HORZ := 0, SB_VERT = 1
-		static SB_LINEUP := 0x0, SB_LINEDOWN := 0x1, SB_PAGEUP := 0x2, SB_PAGEDOWN := 0x3, SB_THUMBPOSITION := 0x4, SB_THUMBTRACK := 0x5, SB_TOP := 0x6, SB_BOTTOM := 0x7, SB_ENDSCROLL := 0x8 
-		
-		if (msg = WM_HSCROLL || msg = WM_VSCROLL){
-			bar := msg - 0x114
-		} else {
-			SoundBeep
-			return
-		}
-		ScrollInfo := this._DLL_GetScrollInfo(bar)
-		;OutputDebug, % "SI: " ScrollInfo.nTrackPos ", Bar: " bar
-
-		if (wParam = SB_LINEUP || wParam = SB_LINEDOWN || wParam = SB_PAGEUP || wParam = SB_PAGEDOWN){
-			; Line scrolling (Arrows at end of scrollbar clicked) or Page scrolling (Area between handle and arrows clicked)
-			; Is an unimplemented flag
-			; wParam is direction
-			; msg is horiz / vert
-			if (wParam = SB_PAGEUP || wParam = SB_PAGEDOWN){
-				wParam -= 2
-				line := ScrollInfo.nPage
-			} else {
-				line := 20
-			}
-			amt := 0
-			max := ScrollInfo.nMax - ScrollInfo.nPage
-			if (wParam){
-				; down
-				amt := ScrollInfo.nPos + line
-				if (amt > max){
-					amt := max
-				}
-			} else {
-				; up
-				amt := ScrollInfo.nPos - line
-				if (amt < ScrollInfo.nMin){
-					amt := ScrollInfo.nMin
-				}
-			}
-			newpos := amt
-			amt := ScrollInfo.nPos - amt
-			if (amt){
-				; IMPORTANT! Update scrollbar pos BEFORE scrolling window.
-				; Scrolling window trips _OnMove for children, and scrollbar pos is used by them to determine coordinates.
-				this._GuiSetScrollbarPos(newpos, bar)
-				this._DLL_ScrollWindow(bar, amt)
-			}
-		/*
-		} else if (wParam = SB_THUMBTRACK){
-			; "The user is dragging the scroll box. This message is sent repeatedly until the user releases the mouse button"
-			; This is bundled in with the drags, as same code seems good.
-		} else if (wParam = SB_THUMBPOSITION || wParam = SB_ENDSCROLL){
-			; This is bundled in with the drags, as same code seems good.
-			this._GuiSetScrollbarPos(ScrollInfo.nTrackPos, bar)
-		} else if (wParam = SB_TOP || wParam = SB_BOTTOM) {
-			; "Scrolls to the upper left" / "Scrolls to the lower right"
-			; Not entirely sure what these are for, disable for now
-			SoundBeep, 100, 100
-		*/
-		} else if (wParam = SB_ENDSCROLL){
-			; Seem to not need to implement this.
-			; Routing it through to the main drag block breaks page scrolling (arrow buttons or wheel)
-		} else {
-			; Drag of scrollbar
-			; Handles SB_THUMBTRACK, SB_THUMBPOSITION, SB_ENDSCROLL Flags (Indicated by wParam has set LOWORD, Highest value is 0x8 which is SB_ENDSCROLL) ...
-			; These Flags generally only get set once each per drag.
-			; ... Also handles drag of scrollbar (wParam has set HIWORD = "current position of the scroll box"), so wParam will be very big.
-			; This HIWORD "Flag" gets set lots of times per drag.
-			
-			; Set the scrollbar pos BEFORE scrolling the window.
-			; Scrolling the window will cause WM_MOVE to trigger for children...
-			; ... And the position of the window needs to match the postion of the scrollbars at that point in time.
-			pos := (ScrollInfo.nTrackPos - this._ScrollInfos[bar].nPos) * -1
-			this._GuiSetScrollbarPos(ScrollInfo.nTrackPos, bar)
-			
-			if (bar){
-				; Vertical Bar
-				h := 0
-				;v := (ScrollInfo.nTrackPos - this._ScrollInfos[bar].nPos) * -1
-				v := pos
-			} else {
-				; Horiz Bar
-				;h := (ScrollInfo.nTrackPos - this._ScrollInfos[bar].nPos) * -1
-				h := pos
-				v := 0
-			}
-			;OutputDebug, % "[ " this._FormatHwnd() " ] " this._SetStrLen(A_ThisFunc) "   Scrolling window by (x,y) " h ", " v " - new Pos: " this._ScrollInfos[bar].nPos
-			;ToolTip % ScrollInfo.nPos "," ScrollInfo.nPage "," ScrollInfo.nMax
-			this._DLL_ScrollWindows(h, v)
-		}
-		if (this._DebugWindows){
-			UpdateDebug()
-		}
-	}
-
-	; Handles mouse wheel messages
-	_OnWheel(wParam, lParam, msg, hwnd){
-		Static MK_SHIFT := 0x0004
-		Static SB_LINEMINUS := 0, SB_LINEPLUS := 1
-		Static WM_MOUSEWHEEL := 0x020A, WM_MOUSEHWHEEL := 0x020E
-		Static WM_HSCROLL := 0x0114, WM_VSCROLL := 0x0115
-		Static SB_HORZ := 0, SB_VERT = 1
-		Critical
-
-		MSG := (Msg = WM_MOUSEWHEEL ? WM_VSCROLL : WM_HSCROLL)
-		bar := msg - 0x114
-		has_scrollbars := 0
-		MouseGetPos,,,,hcurrent,2
-		if (hcurrent != ""){
-			has_scrollbars :=  this._HasScrollbar(bar, hcurrent)
-		}
-		if (has_scrollbars = 0){
-			; No Sub-item found under cursor, get which main parent gui is under the cursor.
-			MouseGetPos,,,hcurrent
-			has_scrollbars :=  this._HasScrollbar(bar, hcurrent)
-		}
-		; Drill down through Hwnds until one is found with scrollbars showing.
-		while (!has_scrollbars){
-			hcurrent := this._DLL_GetParent(hcurrent)
-			has_scrollbars := this._HasScrollbar(bar, hcurrent)
-			if (hcurrent = 0){
-				; No parent found - end
-				break
-			}
-		}
-		; No candidates found - route scroll to main window
-		if (!has_scrollbars){
-			;MsgBox % this.FormatHex(hwnd)
-			hcurrent := hwnd
-			return
-		}
-		
-		if (!ObjHasKey(_CGui._MessageArray[msg], hcurrent)){
-			return
-		}
-
-		SB := ((wParam >> 16) > 0x7FFF) || (wParam < 0) ? SB_LINEPLUS : SB_LINEMINUS
-		
-		(_CGui._MessageArray[msg][hcurrent]).(sb, 0, msg, hcurrent)
-		;return 0
-
-	}
 	; ========================================== DLL CALLS ========================================
 
 	; ACCEPTS x, y
@@ -745,7 +557,205 @@ class _CGui extends _CGuiBase {
 			OnMessage(msg, fn)
 		}
 	}
+
+	; A scrollbar was dragged
+	_OnScroll(wParam, lParam, msg, hwnd){
+		;SoundBeep
+		; Handles:
+		; WM_VSCROLL https://msdn.microsoft.com/en-gb/library/windows/desktop/bb787577(v=vs.85).aspx
+		; WM_HSCROLL https://msdn.microsoft.com/en-gb/library/windows/desktop/bb787575(v=vs.85).aspx
+		Critical
+		static WM_HSCROLL := 0x0114, WM_VSCROLL := 0x0115
+		Static SB_HORZ := 0, SB_VERT = 1
+		static SB_LINEUP := 0x0, SB_LINEDOWN := 0x1, SB_PAGEUP := 0x2, SB_PAGEDOWN := 0x3, SB_THUMBPOSITION := 0x4, SB_THUMBTRACK := 0x5, SB_TOP := 0x6, SB_BOTTOM := 0x7, SB_ENDSCROLL := 0x8 
+		
+		if (msg = WM_HSCROLL || msg = WM_VSCROLL){
+			bar := msg - 0x114
+		} else {
+			SoundBeep
+			return
+		}
+		ScrollInfo := this._DLL_GetScrollInfo(bar)
+		;OutputDebug, % "SI: " ScrollInfo.nTrackPos ", Bar: " bar
+
+		if (wParam = SB_LINEUP || wParam = SB_LINEDOWN || wParam = SB_PAGEUP || wParam = SB_PAGEDOWN){
+			; Line scrolling (Arrows at end of scrollbar clicked) or Page scrolling (Area between handle and arrows clicked)
+			; Is an unimplemented flag
+			; wParam is direction
+			; msg is horiz / vert
+			if (wParam = SB_PAGEUP || wParam = SB_PAGEDOWN){
+				wParam -= 2
+				line := ScrollInfo.nPage
+			} else {
+				line := 20
+			}
+			amt := 0
+			max := ScrollInfo.nMax - ScrollInfo.nPage
+			if (wParam){
+				; down
+				amt := ScrollInfo.nPos + line
+				if (amt > max){
+					amt := max
+				}
+			} else {
+				; up
+				amt := ScrollInfo.nPos - line
+				if (amt < ScrollInfo.nMin){
+					amt := ScrollInfo.nMin
+				}
+			}
+			newpos := amt
+			amt := ScrollInfo.nPos - amt
+			if (amt){
+				; IMPORTANT! Update scrollbar pos BEFORE scrolling window.
+				; Scrolling window trips _OnMove for children, and scrollbar pos is used by them to determine coordinates.
+				this._GuiSetScrollbarPos(newpos, bar)
+				this._DLL_ScrollWindow(bar, amt)
+			}
+		/*
+		} else if (wParam = SB_THUMBTRACK){
+			; "The user is dragging the scroll box. This message is sent repeatedly until the user releases the mouse button"
+			; This is bundled in with the drags, as same code seems good.
+		} else if (wParam = SB_THUMBPOSITION || wParam = SB_ENDSCROLL){
+			; This is bundled in with the drags, as same code seems good.
+			this._GuiSetScrollbarPos(ScrollInfo.nTrackPos, bar)
+		} else if (wParam = SB_TOP || wParam = SB_BOTTOM) {
+			; "Scrolls to the upper left" / "Scrolls to the lower right"
+			; Not entirely sure what these are for, disable for now
+			SoundBeep, 100, 100
+		*/
+		} else if (wParam = SB_ENDSCROLL){
+			; Seem to not need to implement this.
+			; Routing it through to the main drag block breaks page scrolling (arrow buttons or wheel)
+		} else {
+			; Drag of scrollbar
+			; Handles SB_THUMBTRACK, SB_THUMBPOSITION, SB_ENDSCROLL Flags (Indicated by wParam has set LOWORD, Highest value is 0x8 which is SB_ENDSCROLL) ...
+			; These Flags generally only get set once each per drag.
+			; ... Also handles drag of scrollbar (wParam has set HIWORD = "current position of the scroll box"), so wParam will be very big.
+			; This HIWORD "Flag" gets set lots of times per drag.
+			
+			; Set the scrollbar pos BEFORE scrolling the window.
+			; Scrolling the window will cause WM_MOVE to trigger for children...
+			; ... And the position of the window needs to match the postion of the scrollbars at that point in time.
+			pos := (ScrollInfo.nTrackPos - this._ScrollInfos[bar].nPos) * -1
+			this._GuiSetScrollbarPos(ScrollInfo.nTrackPos, bar)
+			
+			if (bar){
+				; Vertical Bar
+				h := 0
+				;v := (ScrollInfo.nTrackPos - this._ScrollInfos[bar].nPos) * -1
+				v := pos
+			} else {
+				; Horiz Bar
+				;h := (ScrollInfo.nTrackPos - this._ScrollInfos[bar].nPos) * -1
+				h := pos
+				v := 0
+			}
+			;OutputDebug, % "[ " this._FormatHwnd() " ] " this._SetStrLen(A_ThisFunc) "   Scrolling window by (x,y) " h ", " v " - new Pos: " this._ScrollInfos[bar].nPos
+			;ToolTip % ScrollInfo.nPos "," ScrollInfo.nPage "," ScrollInfo.nMax
+			this._DLL_ScrollWindows(h, v)
+		}
+		if (this._DebugWindows){
+			UpdateDebug()
+		}
+	}
+
+	; Adjust this._PageRECT when Gui Size Changes (ie it was Resized)
+	; Handles WM_SIZE message
+	; https://msdn.microsoft.com/en-us/library/windows/desktop/ms632646%28v=vs.85%29.aspx
+	_OnSize(wParam, lParam, msg, hwnd){
+		; ToDo: Need to check if hwnd matches this._hwnd ?
+		static SIZE_RESTORED := 0, SIZE_MINIMIZED := 1, SIZE_MAXIMIZED := 2, SIZE_MAXSHOW := 3, SIZE_MAXHIDE := 4
+		
+		if (wParam = SIZE_RESTORED || wParam = SIZE_MAXIMIZED){
+			old := this._WindowRECT.clone()
+			w := lParam & 0xffff
+			h := lParam >> 16
+			if (w != this._PageRECT.Right || h != this._PageRECT.Bottom){
+				; Gui Size Changed - update PAGERECT
+				this._PageRECT.Right := w
+				this._PageRECT.Bottom := h
+			}
+			this._GuiSetWindowRECT()
+			; Adjust Scrollbars if required
+			this._GuiSetScrollbarSize()
+			;this._parent._GuiSetScrollbarSize()
+			this._parent._GuiChildChangedRange(this, old)
+		}
+		if (this._DebugWindows){
+			UpdateDebug()
+		}
+	}
 	
+	; Called when a GUI Moves.
+	; If the GUI moves outside it's parent's RECT, enlarge the parent's RANGE
+	; ToDo: Needs work? buggy?
+	; OnMove seems to be called for a window when you scroll a window containing it.
+	_OnMove(wParam := 0, lParam := 0, msg := 0, hwnd := 0){
+		Critical
+		old := this._WindowRECT.clone()
+		this._GuiSetWindowRECT(wParam, lParam, msg, hwnd)
+		;ToolTip % A_ThisFunc "`nOld: " this._SerializeRECT(old) "`nNew: " this._SerializeRECT(this._WindowRECT)
+		;if (!this._WindowRECT.Equals(old)){
+		;if (!this._parent._RangeRECT.contains(this._WindowRECT)){
+			this._parent._GuiChildChangedRange(this, old)
+		;}
+		return
+	}
+
+	; Handles mouse wheel messages
+	_OnWheel(wParam, lParam, msg, hwnd){
+		Static MK_SHIFT := 0x0004
+		Static SB_LINEMINUS := 0, SB_LINEPLUS := 1
+		Static WM_MOUSEWHEEL := 0x020A, WM_MOUSEHWHEEL := 0x020E
+		Static WM_HSCROLL := 0x0114, WM_VSCROLL := 0x0115
+		Static SB_HORZ := 0, SB_VERT = 1
+		Critical
+
+		MSG := (Msg = WM_MOUSEWHEEL ? WM_VSCROLL : WM_HSCROLL)
+		bar := msg - 0x114
+		has_scrollbars := 0
+		MouseGetPos,,,,hcurrent,2
+		if (hcurrent != ""){
+			has_scrollbars :=  this._HasScrollbar(bar, hcurrent)
+		}
+		if (has_scrollbars = 0){
+			; No Sub-item found under cursor, get which main parent gui is under the cursor.
+			MouseGetPos,,,hcurrent
+			has_scrollbars :=  this._HasScrollbar(bar, hcurrent)
+		}
+		; Drill down through Hwnds until one is found with scrollbars showing.
+		while (!has_scrollbars){
+			hcurrent := this._DLL_GetParent(hcurrent)
+			has_scrollbars := this._HasScrollbar(bar, hcurrent)
+			if (hcurrent = 0){
+				; No parent found - end
+				break
+			}
+		}
+		; No candidates found - route scroll to main window
+		if (!has_scrollbars){
+			;MsgBox % this.FormatHex(hwnd)
+			hcurrent := hwnd
+			return
+		}
+		
+		if (!ObjHasKey(_CGui._MessageArray[msg], hcurrent)){
+			return
+		}
+
+		SB := ((wParam >> 16) > 0x7FFF) || (wParam < 0) ? SB_LINEPLUS : SB_LINEMINUS
+		
+		(_CGui._MessageArray[msg][hcurrent]).(sb, 0, msg, hcurrent)
+		;return 0
+	}
+	
+	_OnExit(wParam, lParam, msg, hwnd){
+		; Need to find close message
+		MsgBox EXIT
+	}
+
+
 	; ========================================== MISC =============================================
 	
 	; Converts a rect to a debugging string
