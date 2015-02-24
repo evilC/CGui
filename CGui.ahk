@@ -165,7 +165,7 @@ class _CGui extends _CGuiBase {
 				return this
 			}
 		} else {
-			GuiControl, % cmd, % ctrl._hwnd, % Params3
+			GuiControl, % this._hwnd ":" cmd, % ctrl._hwnd, % Params3
 			return this
 		}
 	}
