@@ -1,3 +1,4 @@
+CGui_Demo_Running := 1	; any test code in CGui main file should see this and not run.
 BorderState := 1
 
 main := new _CGui(0,"+Resize")

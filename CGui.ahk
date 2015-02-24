@@ -8,41 +8,67 @@
 #include <_Struct>
 #include <WinStructs>
 
-mc := new MyClass(0, "+Resize")
+; bit of a bodge while the properly working demo is in the other script.
+; This script seems to work, but scrollbars never shrink. Need to build debug into this script to find out why.
+if (!CGui_Demo_Running){
+	mc := new MyClass(0, "+Resize")
+}
 
 ; Example class using CGui
 class MyClass extends _Cgui {
 	__New(aParams*){
+		global BorderState
+		
 		base.__New(aParams*)
 		this.Show("w300 h300 y0", "CGui Demo - " this._hwnd)
-		
-		this.MyEdit1 := this.Gui("Add", "Edit")
-		this.GuiControl("+g", this.MyEdit1, this.EditChanged)
-		
-		this.MyButton := this.Gui("Add", "Button", , "v Copy v")
-		this.GuiControl("+g", this.MyButton, this.ButtonPressed)
 
-		this.MyEdit2 := this.Gui("Add", "Edit")
+		this.FocusTest := new this._FocusTest(this, "+Border +Resize +Parent" this._hwnd)
+		this.FocusTest.Show("w150 h150 x50 y50")
+
+		this.VGTest := new this._VGTest(this, "-Border +Parent" this._hwnd)
+		this.VGTest.Show("w140 h90 x0 y0", "")
 		
 	}
 	
-	ButtonPressed(){
-		this.MyEdit2.value := this.MyEdit1.value
+	class _VGTest extends _CGui {
+		__New(aParams*){
+			base.__New(aParams*)
+		
+			this.MyEdit1 := this.Gui("Add", "Edit")
+			this.GuiControl("+g", this.MyEdit1, this.EditChanged)
+			
+			this.MyButton := this.Gui("Add", "Button", , "v Copy v")
+			this.GuiControl("+g", this.MyButton, this.ButtonPressed)
+
+			this.MyEdit2 := this.Gui("Add", "Edit")
+
+		}
+
+		ButtonPressed(){
+			this.MyEdit2.value := this.MyEdit1.value
+		}
+		
+		EditChanged(){
+			this.ToolTip(this.MyEdit1.value)
+		}
 	}
 	
-	EditChanged(){
-		this.ToolTip(this.MyEdit1.value)
+	class _FocusTest extends _CGui {
+		__New(aParams*){
+			base.__New(aParams*)
+			
+			Loop 8 {
+				this.Gui("Add", "Edit", "w300", "Item " A_Index)
+			}
+
+		}
 	}
+
 }
 
 Esc::
 GuiClose:
 	ExitApp
-
-; Put debugging stuff in here
-UpdateDebug(){
-	
-}
 
 ; Wraps All Gui commands - Guis and GuiControls
 class _CGui extends _CGuiBase {
@@ -94,8 +120,8 @@ class _CGui extends _CGuiBase {
 		; Close Gui - need method
 		;this._RegisterMessage(WM_CLOSE, this._OnExit)
 		
-		if (this._DebugWindows){
-			UpdateDebug()
+		if (this._DebugWindows && IsFunc("UpdateDebug")){
+			Func("UpdateDebug")
 		}
 	}
 
@@ -637,8 +663,8 @@ class _CGui extends _CGuiBase {
 			;ToolTip % ScrollInfo.nPos "," ScrollInfo.nPage "," ScrollInfo.nMax
 			this._DLL_ScrollWindows(h, v)
 		}
-		if (this._DebugWindows){
-			UpdateDebug()
+		if (this._DebugWindows && IsFunc("UpdateDebug")){
+			Func("UpdateDebug")
 		}
 	}
 
@@ -664,8 +690,8 @@ class _CGui extends _CGuiBase {
 			;this._parent._GuiSetScrollbarSize()
 			this._parent._GuiChildChangedRange(this, old)
 		}
-		if (this._DebugWindows){
-			UpdateDebug()
+		if (this._DebugWindows && IsFunc("UpdateDebug")){
+			Func("UpdateDebug")
 		}
 	}
 	
@@ -754,6 +780,15 @@ class _CGui extends _CGuiBase {
 		}
 	}
 	
+	BoolToSgn(bool){
+		if (bool){
+			return "+"
+		} else {
+			return "-"
+		}
+	}
+
+	
 	ToolTip(Text, duration := 500){
 		fn := bind(this.ToolTipTimer, this)
 		this._TooltipActive := fn
@@ -779,8 +814,8 @@ class _CGui extends _CGuiBase {
 			this._hwnd := hwnd
 			this._WindowRECT := new this.RECT()
 			this._GuiSetWindowRECT()
-			if (this._DebugWindows){
-				UpdateDebug()
+			if (this._DebugWindows && IsFunc("UpdateDebug")){
+				Func("UpdateDebug")
 			}
 		}
 		
@@ -987,8 +1022,8 @@ class _CGuiBase {
 		;this._TestRECT.Bottom := Bottom
 		;ToolTip % A_ThisFunc "`n" this._SerializeRECT(this._TestRECT) " - " y_offset
 
-		if (this._DebugWindows){
-			UpdateDebug()
+		if (this._DebugWindows && IsFunc("UpdateDebug")){
+			Func("UpdateDebug")
 		}
 
 	}
