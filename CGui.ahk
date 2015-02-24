@@ -10,11 +10,11 @@
 
 mc := new MyClass(0, "+Resize")
 
+; Example class using CGui
 class MyClass extends _Cgui {
 	__New(aParams*){
 		base.__New(aParams*)
 		this.Show("w300 h300 y0", "CGui Demo - " this._hwnd)
-		
 		
 		this.MyEdit1 := this.Gui("Add", "Edit")
 		this.GuiControl("+g", this.MyEdit1, this.EditChanged)
@@ -39,6 +39,7 @@ Esc::
 GuiClose:
 	ExitApp
 
+; Put debugging stuff in here
 UpdateDebug(){
 	
 }
