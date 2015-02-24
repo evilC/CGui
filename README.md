@@ -21,12 +21,11 @@ A Class that you extend to allow you to turn a Gui or GuiControl into an object 
 * Example script demonstrating features
 
 ##How?
-(Please note, currently undergoing rewrite, syntax may not be same again yet...)
 #####Do I use it?
 * Include the script.
 * Derive any classes you wish to alter them.
 * instantiate your first window class `MyClass := new MyClass()`
-* Put `base.__New()` at the start of the `__New()` constructor for your class.
+* Put `base.__New(aParams*)` at the start of the `__New()` constructor for your class.
 * Access Gui functions through `this.GUI()`, using the same syntax.  
 eg `Gui, Add, Edit, x0 y0 w100, Text`
 would become `this.Gui("Add", "Edit", "x0 y0 w100", "Text")`  
@@ -37,7 +36,7 @@ would become `this.Gui("Add", "Edit", "x0 y0 w100", "Text")`
 * Set *gLabels* with `this.GuiContol("+g", <control>, <method>)`  
 eg `this.GuiControl("+g", this.myedit, this.EditChanged)`  
 * *vLabels* are not required - Get / Set Control properties with <control>.value, eg `myedit.value`.  
-* Use `GuiOption` to set gui options, pass objects instead of HWNDs, eg:  
+* (Currently Unavailable) Use `GuiOption` to set gui options, pass objects instead of HWNDs, eg:  
 ```AutoHotkey
 this.ChildWindow := new CWindow(this, "-Border")
 this.ChildWindow.GuiOption("+Parent", this)
