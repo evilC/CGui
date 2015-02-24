@@ -8,86 +8,31 @@
 #include <_Struct>
 #include <WinStructs>
 
-BorderState := 1
+mc := new MyClass(0, "+Resize")
 
-main := new _CGui(0,"+Resize")
-main.Show("w300 h300 y0", "CGui Demo - " main._hwnd)
-Menu, Menu1, Add, Border, ToggleBorder
-Menu, Menu1, Add, Destroy, DestroyChild
-Gui, Menu, Menu1
-
-;main.Child := new _Cgui(main, BoolToSgn(BorderState) "Border +Resize +Parent" main._hwnd)
-main.Child := main.Gui("new", BoolToSgn(BorderState) "Border +Resize +Parent" main._hwnd)
-main._DebugWindows := 0
-main.Child._DebugWindows := main._DebugWindows
-main.NAme := "main"
-main.Child.NAme := "Child"
-
-main.Child.Show("w150 h150 x00 y00", main.child._hwnd)
-
-main.Child2 := main.Gui("new", "-Border +Resize +Parent" main._hwnd)
-main.Child2.Show("x200 y200")
-main.Child2.myText := main.Child2.Gui("Add", "Text", "x0 y0 w100", main.Child2._hwnd " (" Format("{:i}",main.Child2._hwnd) ")" )
-main.Child2.NAme := "Child2"
-main.Child2._DebugWindows := main._DebugWindows
-;main._RangeRECT.Bottom := 500
-;main._RangeRECT.Right := 500
-;main._GuiSetScrollbarSize()
-
-if (main._DebugWindows || main.child._DebugWindows){
-	Gui, New, hwndhDebug
-	Gui, % hDebug ":Show", w300 h180 x0 y0
-	Gui, % hDebug ":Add", Text, % "hwndhDebugOuter w400 h400" ,
-}
-
-Loop 8 {
-	main.Child.Gui("Add", "Edit", "w300", "Item " A_Index)
-}
-if (main._DebugWindows || main.child._DebugWindows){
-	UpdateDebug()
-}
-return
-
-UpdateDebug() {
-	global main
-	global hDebug, hDebugOuter
-	str := ""
-	str .= "PARENT hwnd: `t`t" main._hwnd "   (" Format("{:i}",main._hwnd) ")"
-	str .= "`nCHILD hwnd: `t`t" main.child._hwnd "   (" Format("{:i}",main.child._hwnd) ")"
-	str .= "`n`nOuter WINDOW: `t" main._SerializeRECT(main._WindowRECT)
-	str .= "`nOuter PAGE: `t`t" main._SerializeRECT(main._PageRECT)
-	str .= "`nOuter RANGE: `t`t" main._SerializeRECT(main._RangeRECT)
-	str .= "`n`nInner WINDOW: `t: " main._SerializeRECT(main.Child._WindowRECT)
-	str .= "`nInner PAGE: `t`t: " main._SerializeRECT(main.Child._PageRECT)
-	str .= "`nInner RANGE: `t`t: " main._SerializeRECT(main.Child._RangeRECT)
-	str .= "`n`nCHILD2 WINDOW: `t: " main._SerializeRECT(main.Child2._WindowRECT)
-	;str .= "`n`nTest RECT: `t`t: " main._SerializeRECT(main.Child._TestRECT)
-	GuiControl, % hDebug ":", % hDebugOuter, % str
-	Sleep 100
-}
-
-ToggleBorder:
-	BorderState := !BorderState
-	Gui, % main.Child._hwnd ":" BoolToSgn(BorderState) "Border"
+class MyClass extends _Cgui {
+	__New(aParams*){
+		base.__New(aParams*)
+		this.Show("w300 h300 y0", "CGui Demo - " this._hwnd)
+		
+		this.MyButton := this.Gui("Add", "Button", , "Press Me")
+		this.GuiControl("+g", this.MyButton, this.ButtonPressed)
+		
+	}
 	
-	return
-
-DestroyChild:
-	main.Child2.Destroy()
-	main.Child2 := ""
-	return
+	ButtonPressed(){
+		SoundBeep
+	}
+}
 
 Esc::
 GuiClose:
 	ExitApp
 
-BoolToSgn(bool){
-	if (bool){
-		return "+"
-	} else {
-		return "-"
-	}
+UpdateDebug(){
+	
 }
+
 ; Wraps All Gui commands - Guis and GuiControls
 class _CGui extends _CGuiBase {
 	_type := "w"	; Window Type
@@ -203,7 +148,27 @@ class _CGui extends _CGuiBase {
 		}
 	}
 
-
+	; Wraps GuiControl to use hwnds and function binding etc
+	GuiControl(cmd := "", ctrl := "", Param3 := ""){
+		m := SubStr(cmd,1,1)
+		if (m = "+" || m = "-"){
+			; Options
+			o := SubStr(cmd,2,1)
+			if (o = "g"){
+				; Emulate G-Labels whilst also allowing seperate OnChange event to be Extended (For Saving settings in INI etc)
+				; Bind g-label to _glabel property
+				fn := bind(Param3,this)
+				ctrl._glabel := fn
+				; Bind glabel event to _OnChange method
+				fn := bind(ctrl._OnChange,ctrl)
+				GuiControl % cmd, % ctrl._hwnd, % fn
+				return this
+			}
+		} else {
+			GuiControl, % cmd, % ctrl._hwnd, % Params3
+			return this
+		}
+	}
 	; ========================================== DIMENSIONS =======================================
 
 	/*
@@ -250,7 +215,7 @@ class _CGui extends _CGuiBase {
 				if (moved[dir] > 0){
 					;shrank := 1
 					opp := opposites[dir]
-					;ToolTip % this.NAme "-" dir "`nOld: " old[opp] " = " this._RangeRECT[opp] " ?"
+					;ToolTip % this.name "-" dir "`nOld: " old[opp] " = " this._RangeRECT[opp] " ?"
 					if (old[opp] = this._RangeRECT[opp]){
 						shrank := 1
 						break
@@ -265,17 +230,17 @@ class _CGui extends _CGuiBase {
 				Count := 0
 				for childHwnd in this._ChildGuis {
 					if (childHwnd = child._hwnd){
-						;MsgBox % "Skipping " this._ChildGuis[childHwnd].NAme
+						;MsgBox % "Skipping " this._ChildGuis[childHwnd].name
 						continue
 					}
 					if (!Count){
 						this._RangeRECT := new this.RECT()
 						this._RangeRECT.Union(this._ChildGuis[childHwnd]._WindowRECT)
-						;MsgBox % "including " this._ChildGuis[childHwnd].NAme
+						;MsgBox % "including " this._ChildGuis[childHwnd].name
 						Count++
 						continue
 					}
-					;MsgBox % "including " this._ChildGuis[childHwnd].NAme
+					;MsgBox % "including " this._ChildGuis[childHwnd].name
 					this._RangeRECT.Union(this._ChildGuis[childHwnd]._WindowRECT)
 					Count++
 				}
@@ -287,7 +252,7 @@ class _CGui extends _CGuiBase {
 			}
 			/*
 			if (shrank){
-				ToolTip % this.NAme " shrank`n" this._SerializeRECT(this._RangeRECT) "`nChild: " this._SerializeRECT(Child._WindowRECT)
+				ToolTip % this.name " shrank`n" this._SerializeRECT(this._RangeRECT) "`nChild: " this._SerializeRECT(Child._WindowRECT)
 			} else {
 				ToolTip
 			}
@@ -807,9 +772,21 @@ class _CGui extends _CGuiBase {
 			this._parent._ChildControls.Remove(this._hwnd, "")
 			this._parent._GuiChildChangedRange()
 		}
+		
+		_OnChange(){
+			; ToDo: Hook in Persistent Settings system
+			
+			; Call bound function if present
+			if (ObjHasKey(this,"_glabel")){
+				(this._glabel).()
+			}
+		}
 	}
 
 }
+
+; =================================================================================================
+; =================================================================================================
 
 ; A base class, purely for inheriting.
 class _CGuiBase {
@@ -943,7 +920,7 @@ class _CGuiBase {
 				Right := (PosX + Width)
 				Bottom := (PosY + height)
 				;ToolTip % "Pos: " PosX "," PosY
-				;ToolTip % this.NAme	"`n" this._SerializeRECT(this._WindowRECT) " - " y_offset
+				;ToolTip % this.name	"`n" this._SerializeRECT(this._WindowRECT) " - " y_offset
 			}
 		} else {
 			GuiControlGet, Pos, % this._parent._hwnd ":Pos", % this._hwnd
@@ -955,7 +932,7 @@ class _CGuiBase {
 		this._WindowRECT.Top := PosY
 		this._WindowRECT.Right := Right
 		this._WindowRECT.Bottom := Bottom
-		;ToolTip % this.NAme	"`n" this._SerializeRECT(this._WindowRECT) " - " y_offset
+		;ToolTip % this.name	"`n" this._SerializeRECT(this._WindowRECT) " - " y_offset
 		;this._TestRECT.Left := PosX
 		;this._TestRECT.Top := PosY
 		;this._TestRECT.Right := Right
