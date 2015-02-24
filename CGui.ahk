@@ -15,16 +15,23 @@ class MyClass extends _Cgui {
 		base.__New(aParams*)
 		this.Show("w300 h300 y0", "CGui Demo - " this._hwnd)
 		
-		this.MyButton := this.Gui("Add", "Button", , "Press Me")
-		this.GuiControl("+g", this.MyButton, this.ButtonPressed)
 		
 		this.MyEdit1 := this.Gui("Add", "Edit")
+		this.GuiControl("+g", this.MyEdit1, this.EditChanged)
+		
+		this.MyButton := this.Gui("Add", "Button", , "v Copy v")
+		this.GuiControl("+g", this.MyButton, this.ButtonPressed)
+
 		this.MyEdit2 := this.Gui("Add", "Edit")
 		
 	}
 	
 	ButtonPressed(){
 		this.MyEdit2.value := this.MyEdit1.value
+	}
+	
+	EditChanged(){
+		this.ToolTip(this.MyEdit1.value)
 	}
 }
 
@@ -745,6 +752,18 @@ class _CGui extends _CGuiBase {
 			return 0
 		}
 	}
+	
+	ToolTip(Text, duration := 500){
+		fn := bind(this.ToolTipTimer, this)
+		this._TooltipActive := fn
+		SetTimer, % fn, % "-" duration
+		ToolTip % Text
+	}
+	
+	ToolTipTimer(){
+		ToolTip
+	}
+
 	; ========================================== CLASSES ==========================================
 	
 	; Wraps GuiControls into an Object
@@ -753,6 +772,7 @@ class _CGui extends _CGuiBase {
 		; Equivalent to Gui, Add
 		__New(parent, ctrltype, options := "", text := ""){
 			this._parent := parent
+			this._ctrltype := ctrltype
 			Gui, % this._parent.PrefixHwnd("Add"), % ctrltype, % "hwndhwnd " options, % text
 			;this._parent.Gui("add", ctrltype, "hwndhwnd " options
 			this._hwnd := hwnd
@@ -795,12 +815,18 @@ class _CGui extends _CGuiBase {
 		}
 		
 		_OnChange(){
-			; ToDo: Hook in Persistent Settings system
+			; Provide hook into change event
+			this.OnChange()
 			
 			; Call bound function if present
 			if (ObjHasKey(this,"_glabel")){
 				(this._glabel).()
 			}
+		}
+		
+		; Override to hook into change event independently of g-labels
+		OnChange(){
+			
 		}
 	}
 
