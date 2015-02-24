@@ -7,11 +7,12 @@
 
 #include <_Struct>
 #include <WinStructs>
+#include sample inihandler.ahk
 
 mc := new MyClass(0, "+Resize")
 
 ; Example class using CGui
-class MyClass extends _Cgui {
+class MyClass extends CWindow {
 	__New(aParams*){
 		global BorderState
 		
@@ -19,25 +20,27 @@ class MyClass extends _Cgui {
 		this.Show("w300 h300 y0", "CGui Demo - " this._hwnd)
 
 		this.FocusTest := new this._FocusTest(this, "+Border +Resize +Parent" this._hwnd)
-		this.FocusTest.Show("w150 h150 x50 y50")
+		this.FocusTest.Show("w150 h150 x150 y150")
 
 		this.VGTest := new this._VGTest(this, "-Border +Parent" this._hwnd)
-		this.VGTest.Show("w140 h90 x0 y0", "")
+		this.VGTest.Show("w170 h110 x0 y0", "")
 		
 	}
 	
-	class _VGTest extends _CGui {
+	class _VGTest extends CWindow {
 		__New(aParams*){
 			base.__New(aParams*)
 		
-			this.MyEdit1 := this.Gui("Add", "Edit")
+			this.MyEdit1 := this.Gui("Add", "Edit", "w150")
 			this.GuiControl("+g", this.MyEdit1, this.EditChanged)
 			
-			this.MyButton := this.Gui("Add", "Button", , "v Copy v")
+			this.MyButton := this.Gui("Add", "Button", "w150", "v Copy v")
 			this.GuiControl("+g", this.MyButton, this.ButtonPressed)
+			
+			this.Gui("Add", "Text", "w150 Center", "This box is Persistent")
 
-			this.MyEdit2 := this.Gui("Add", "Edit")
-
+			this.MyEdit2 := this.Gui("Add", "Edit", "w150")
+			this.MyEdit2.MakePersistent("MyEdit2")
 		}
 
 		ButtonPressed(){
@@ -49,7 +52,7 @@ class MyClass extends _Cgui {
 		}
 	}
 	
-	class _FocusTest extends _CGui {
+	class _FocusTest extends CWindow {
 		__New(aParams*){
 			base.__New(aParams*)
 			
@@ -793,6 +796,7 @@ class _CGui extends _CGuiBase {
 	; Wraps GuiControls into an Object
 	class _CGuiControl extends _CGuiBase {
 		_type := "c"	; Control Type
+		_glabel := 0
 		; Equivalent to Gui, Add
 		__New(parent, ctrltype, options := "", text := ""){
 			this._parent := parent
