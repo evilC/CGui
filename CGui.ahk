@@ -18,10 +18,13 @@ class MyClass extends _Cgui {
 		this.MyButton := this.Gui("Add", "Button", , "Press Me")
 		this.GuiControl("+g", this.MyButton, this.ButtonPressed)
 		
+		this.MyEdit1 := this.Gui("Add", "Edit")
+		this.MyEdit2 := this.Gui("Add", "Edit")
+		
 	}
 	
 	ButtonPressed(){
-		SoundBeep
+		this.MyEdit2.value := this.MyEdit1.value
 	}
 }
 
@@ -165,7 +168,7 @@ class _CGui extends _CGuiBase {
 				return this
 			}
 		} else {
-			GuiControl, % this._hwnd ":" cmd, % ctrl._hwnd, % Params3
+			GuiControl, % this._hwnd ":" cmd, % ctrl._hwnd, % Param3
 			return this
 		}
 	}
@@ -768,6 +771,18 @@ class _CGui extends _CGuiBase {
 			; If top touches range top, left touches page left, right touches page right, or bottom touches page bottom...
 			; Removing this GuiControl should trigger a RANGE CHANGE.
 			; Same for Hiding a GuiControl?
+		}
+		
+		__Get(aParam){
+			if (aParam = "value"){
+				return this._parent.GuiControlGet(,this)
+			}
+		}
+		
+		__Set(aParam, aValue){
+			if (aParam = "value"){
+				return this._parent.GuiControl(,this, aValue)
+			}
 		}
 		
 		; Removes a GUIControl.
