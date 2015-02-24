@@ -8,11 +8,7 @@
 #include <_Struct>
 #include <WinStructs>
 
-; bit of a bodge while the properly working demo is in the other script.
-; This script seems to work, but scrollbars never shrink. Need to build debug into this script to find out why.
-if (!CGui_Demo_Running){
-	mc := new MyClass(0, "+Resize")
-}
+mc := new MyClass(0, "+Resize")
 
 ; Example class using CGui
 class MyClass extends _Cgui {
@@ -80,7 +76,6 @@ class _CGui extends _CGuiBase {
 	; ScrollInfo array - Declared as associative, but consider 0-based indexed. 0-based so SB_HORZ / SB_VERT map to correct elements.
 	_ScrollInfos := {0: 0, 1: 0}
 	
-	_DebugWindows := 0
 	; ========================================== GUI COMMAND WRAPPERS =============================
 	; Equivalent to Gui, New
 	__New(parent := 0, options := 0, aParams*){
@@ -94,6 +89,11 @@ class _CGui extends _CGuiBase {
 
 		Gui, new, % "hwndhwnd " options
 		this._hwnd := hwnd
+		
+		if (this._parent != 0){
+			this._parent._ChildGuis[this._hwnd] := this
+		}
+		
 		; Initialize page and range classes so that all values read 0
 		this._RangeRECT := new this.RECT()
 		this._PageRECT := new this.RECT()
@@ -120,9 +120,6 @@ class _CGui extends _CGuiBase {
 		; Close Gui - need method
 		;this._RegisterMessage(WM_CLOSE, this._OnExit)
 		
-		if (this._DebugWindows && IsFunc("UpdateDebug")){
-			Func("UpdateDebug")
-		}
 	}
 
 	__Delete(){
@@ -175,12 +172,9 @@ class _CGui extends _CGuiBase {
 		if (cmd = "add"){
 			; Create GuiControl
 			obj := new this._CGuiControl(this, aParams*)
-			this._ChildControls[obj._hwnd] := obj
-			this._GuiChildChangedRange(obj, obj._WindowRECT)
 			return obj
 		} else if (cmd = "new"){
 			obj := new _CGui(this, aParams*)
-			this._ChildGuis[obj._hwnd] := obj
 			return obj
 		}
 	}
@@ -663,9 +657,6 @@ class _CGui extends _CGuiBase {
 			;ToolTip % ScrollInfo.nPos "," ScrollInfo.nPage "," ScrollInfo.nMax
 			this._DLL_ScrollWindows(h, v)
 		}
-		if (this._DebugWindows && IsFunc("UpdateDebug")){
-			Func("UpdateDebug")
-		}
 	}
 
 	; Adjust this._PageRECT when Gui Size Changes (ie it was Resized)
@@ -689,9 +680,6 @@ class _CGui extends _CGuiBase {
 			this._GuiSetScrollbarSize()
 			;this._parent._GuiSetScrollbarSize()
 			this._parent._GuiChildChangedRange(this, old)
-		}
-		if (this._DebugWindows && IsFunc("UpdateDebug")){
-			Func("UpdateDebug")
 		}
 	}
 	
@@ -812,11 +800,13 @@ class _CGui extends _CGuiBase {
 			Gui, % this._parent.PrefixHwnd("Add"), % ctrltype, % "hwndhwnd " options, % text
 			;this._parent.Gui("add", ctrltype, "hwndhwnd " options
 			this._hwnd := hwnd
+			
 			this._WindowRECT := new this.RECT()
 			this._GuiSetWindowRECT()
-			if (this._DebugWindows && IsFunc("UpdateDebug")){
-				Func("UpdateDebug")
-			}
+			
+			this._parent._ChildControls[this._hwnd] := this
+			this._parent._GuiChildChangedRange(this, this._WindowRECT)
+
 		}
 		
 		__Delete(){
@@ -1021,10 +1011,6 @@ class _CGuiBase {
 		;this._TestRECT.Right := Right
 		;this._TestRECT.Bottom := Bottom
 		;ToolTip % A_ThisFunc "`n" this._SerializeRECT(this._TestRECT) " - " y_offset
-
-		if (this._DebugWindows && IsFunc("UpdateDebug")){
-			Func("UpdateDebug")
-		}
 
 	}
 	
