@@ -2,7 +2,7 @@
 ; OnChange is a class function that normally does nothing. The rest of this class is specific to your implementation
 
 ; Implement GuiControl persistence with IniRead / IniWrite
-class CWindow extends _CGui {
+class CGui extends _CGui {
 ;class CWindow extends _CScrollGui {
 	Class _CGuiControl extends _CGui._CGuiControl {
 		__New(aParams*){

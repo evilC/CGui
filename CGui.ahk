@@ -12,7 +12,7 @@
 mc := new MyClass(0, "+Resize")
 
 ; Example class using CGui
-class MyClass extends CWindow {
+class MyClass extends CGui {
 	__New(aParams*){
 		global BorderState
 		
@@ -27,7 +27,7 @@ class MyClass extends CWindow {
 		
 	}
 	
-	class _VGTest extends CWindow {
+	class _VGTest extends CGui {
 		__New(aParams*){
 			base.__New(aParams*)
 		
@@ -52,7 +52,7 @@ class MyClass extends CWindow {
 		}
 	}
 	
-	class _FocusTest extends CWindow {
+	class _FocusTest extends CGui {
 		__New(aParams*){
 			base.__New(aParams*)
 			
