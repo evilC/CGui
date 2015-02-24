@@ -169,6 +169,12 @@ class _CGui extends _CGuiBase {
 			return this
 		}
 	}
+	
+	; Wraps GuiControlGet
+	GuiControlGet(cmd := "", ctrl := "", param4 := ""){
+		GuiControlGet, ret, % this._hwnd ":" cmd, % ctrl._hwnd, % Param4
+		return ret
+	}
 	; ========================================== DIMENSIONS =======================================
 
 	/*
