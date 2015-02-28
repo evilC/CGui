@@ -1,4 +1,4 @@
-; REQUIRES AHK TEST BUILD from HERE: http://ahkscript.org/boards/viewtopic.php?f=24&t=5802
+; REQUIRES AHK TEST BUILD >= 111903_37_gd7b054a from HERE: http://ahkscript.org/boards/viewtopic.php?f=24&t=5802
 ; DEPENDENCIES:
 ; _Struct():  https://raw.githubusercontent.com/HotKeyIt/_Struct/master/_Struct.ahk - docs: http://www.autohotkey.net/~HotKeyIt/AutoHotkey/_Struct.htm
 ; sizeof(): https://raw.githubusercontent.com/HotKeyIt/_Struct/master/sizeof.ahk - docs: http://www.autohotkey.net/~HotKeyIt/AutoHotkey/sizeof.htm
@@ -191,10 +191,10 @@ class _CGui extends _CGuiBase {
 			if (o = "g"){
 				; Emulate G-Labels whilst also allowing seperate OnChange event to be Extended (For Saving settings in INI etc)
 				; Bind g-label to _glabel property
-				fn := bind(Param3,this)
+				fn := Param3.Bind(this)
 				ctrl._glabel := fn
 				; Bind glabel event to _OnChange method
-				fn := bind(ctrl._OnChange,ctrl)
+				fn := ctrl._OnChange.bind(ctrl)
 				GuiControl % cmd, % ctrl._hwnd, % fn
 				return this
 			}
@@ -553,12 +553,12 @@ class _CGui extends _CGuiBase {
 		
 		; Add the callback to _MessageArray, so that _MessageHandler can look it up and route to it.
 		; Store Array on _CGui, so any class can call it's own .RegisterMessage property.
-		fn := Bind(callback, this)
+		fn := callback.Bind(this)
 		_CGui._MessageArray[msg][this._hwnd] := fn
 		
 		; Only subscribe to message if this message has not already been subscribed to.
 		if (newmessage){
-			fn := bind(this._MessageHandler, this)
+			fn := this._MessageHandler.Bind(this)
 			OnMessage(msg, fn)
 		}
 	}
@@ -781,7 +781,7 @@ class _CGui extends _CGuiBase {
 
 	
 	ToolTip(Text, duration := 500){
-		fn := bind(this.ToolTipTimer, this)
+		fn := this.ToolTipTimer.bind(this)
 		this._TooltipActive := fn
 		SetTimer, % fn, % "-" duration
 		ToolTip % Text
@@ -1072,23 +1072,4 @@ class _CGuiBase {
 		return Format("{:-" max "s}",func)
 	}
 
-}
-
-; Functions that will be part of AHK at some point ================================================================================================
-bind(fn, args*) {  ; bind v1.2
-    try bound := fn.bind(args*)  ; Func.Bind() not yet implemented.
-    return bound ? bound : new BoundFunc(fn, args*)
-}
-
-class BoundFunc {
-    __New(fn, args*) {
-        this.fn := IsObject(fn) ? fn : Func(fn)
-        this.args := args
-    }
-    __Call(callee, args*) {
-        if (callee = "" || callee = "call" || IsObject(callee)) {  ; IsObject allows use as a method.
-            fn := this.fn, args.Insert(1, this.args*)
-            return %fn%(args*)
-        }
-    }
 }
