@@ -1,4 +1,4 @@
-; REQUIRES AHK TEST BUILD >= 111903_37_gd7b054a from HERE: http://ahkscript.org/boards/viewtopic.php?f=24&t=5802
+; REQUIRES AHK >= v1.1.20.00
 ; DEPENDENCIES:
 ; _Struct():  https://raw.githubusercontent.com/HotKeyIt/_Struct/master/_Struct.ahk - docs: http://www.autohotkey.net/~HotKeyIt/AutoHotkey/_Struct.htm
 ; sizeof(): https://raw.githubusercontent.com/HotKeyIt/_Struct/master/sizeof.ahk - docs: http://www.autohotkey.net/~HotKeyIt/AutoHotkey/sizeof.htm
