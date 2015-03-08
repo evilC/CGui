@@ -1,11 +1,7 @@
 # CGui
 A wrapper for AHK's GUI functionality, Experimental!
 
-Inspired by Fincs' AFC.  
-Made possible by the recent test builds of AHK.  
-
-Please ensure you have a test build of AHK from [this thread](http://ahkscript.org/boards/viewtopic.php?f=24&t=5802).  
-To make swapping between builds of ahk, you can use [AHK-EXE-Swapper](https://github.com/ahkscript/AHK-EXE-Swapper).  
+**Requires AHK >= 1.1.20.00**
 
 ##What?
 #####Does it do?
