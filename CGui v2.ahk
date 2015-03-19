@@ -855,7 +855,11 @@ class _CGui extends _CGuiBase {
 		
 		_OnChange(){
 			; Provide hook into change event
-			this.OnChange()
+			if (isfunc(this.OnChange)){
+				; ToDo - why do I need this conditional with v2? Conditional not needed with v1...
+				; ... plus there should never be a case when _OnChange exists but OnChange does not!
+				this.OnChange()
+			}
 			
 			; Call bound function if present
 			if (ObjHasKey(this,"_glabel")){
@@ -866,7 +870,6 @@ class _CGui extends _CGuiBase {
 		
 		; Override to hook into change event independently of g-labels
 		OnChange(){
-			a := 1
 		}
 	}
 
