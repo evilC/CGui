@@ -82,10 +82,10 @@ class _CGui extends _CGuiBase {
 	; ========================================== GUI COMMAND WRAPPERS =============================
 	; Equivalent to Gui, New
 	__New(parent := 0, options := 0, aParams*){
-		Static SB_HORZ := 0, SB_VERT := 1
-		static WM_MOVE := 0x0003, WM_SIZE := 0x0005
-		static WM_HSCROLL := 0x0114, WM_VSCROLL := 0x0115
-		Static WM_MOUSEWHEEL := 0x020A, WM_MOUSEHWHEEL := 0x020E
+		Static SB_HORZ := 0+0, SB_VERT := 0+1
+		static WM_MOVE := 0+0x0003, WM_SIZE := 0+0x0005
+		static WM_HSCROLL := 0+0x0114, WM_VSCROLL := 0+0x0115
+		Static WM_MOUSEWHEEL := 0+0x020A, WM_MOUSEHWHEEL := 0+0x020E
 		;static WM_CLOSE := 0x0010
 
 		this._parent := parent
@@ -342,8 +342,8 @@ class _CGui extends _CGuiBase {
 	
 	; Set the POSITION component of a scrollbar
 	_GuiSetScrollbarPos(nTrackPos, bar){
-		Static SB_HORZ := 0, SB_VERT := 1
-		static SIF_POS := 0x4
+		Static SB_HORZ := 0+0, SB_VERT := 0+1
+		static SIF_POS := 0+0x4
 		
 		this._ScrollInfos[bar].fMask := SIF_POS
 		this._ScrollInfos[bar].nPos := nTrackPos
@@ -355,9 +355,9 @@ class _CGui extends _CGuiBase {
 	; bars = 1 = SB_VERT
 	; bars = 2 (or omit bars) = both bars
 	_GuiSetScrollbarSize(bars := 2, PageRECT := 0, RangeRECT := 0, mode := "b"){
-		Static SB_HORZ := 0, SB_VERT := 1
-		static SIF_DISABLENOSCROLL := 0x8
-		static SIF_RANGE := 0x1, SIF_PAGE := 0x2, SIF_POS := 0x4, SIF_ALL := 0x17
+		Static SB_HORZ := 0+0, SB_VERT := 0+1
+		static SIF_DISABLENOSCROLL := 0+0x8
+		static SIF_RANGE := 0+0x1, SIF_PAGE := 0+0x2, SIF_POS := 0+0x4, SIF_ALL := 0+0x17
 		; Index Min / Max property names of a RECT by SB_HORZ = 0, SB_VERT = 1
 		static RECTProperties := { 0: {min: "Left", max: "Right"}, 1: {min: "Top", max: "Bottom"} }
 		
@@ -510,7 +510,7 @@ class _CGui extends _CGuiBase {
 	; returns a SCROLLINFO structure
 	_DLL_GetScrollInfo(fnBar, hwnd := 0){
 		; https://msdn.microsoft.com/en-us/library/windows/desktop/bb787583%28v=vs.85%29.aspx
-		static SIF_ALL := 0x17
+		static SIF_ALL := 0+0x17
 		if (hwnd = 0){
 			; Normal use - operate on youurself. Passed hwnd = inspect another window
 			hwnd := this._hwnd
@@ -574,9 +574,9 @@ class _CGui extends _CGuiBase {
 		; WM_VSCROLL https://msdn.microsoft.com/en-gb/library/windows/desktop/bb787577(v=vs.85).aspx
 		; WM_HSCROLL https://msdn.microsoft.com/en-gb/library/windows/desktop/bb787575(v=vs.85).aspx
 		Critical
-		static WM_HSCROLL := 0x0114, WM_VSCROLL := 0x0115
-		Static SB_HORZ := 0, SB_VERT := 1
-		static SB_LINEUP := 0x0, SB_LINEDOWN := 0x1, SB_PAGEUP := 0x2, SB_PAGEDOWN := 0x3, SB_THUMBPOSITION := 0x4, SB_THUMBTRACK := 0x5, SB_TOP := 0x6, SB_BOTTOM := 0x7, SB_ENDSCROLL := 0x8 
+		static WM_HSCROLL := 0+0x0114, WM_VSCROLL := 0+0x0115
+		Static SB_HORZ := 0+0, SB_VERT := 0+1
+		static SB_LINEUP := 0+0x0, SB_LINEDOWN := 0+0x1, SB_PAGEUP := 0+0x2, SB_PAGEDOWN := 0+0x3, SB_THUMBPOSITION := 0+0x4, SB_THUMBTRACK := 0+0x5, SB_TOP := 0+0x6, SB_BOTTOM := 0+0x7, SB_ENDSCROLL := 0+0x8 
 		
 		if (msg = WM_HSCROLL || msg = WM_VSCROLL){
 			bar := msg - 0x114
@@ -671,7 +671,7 @@ class _CGui extends _CGuiBase {
 	; https://msdn.microsoft.com/en-us/library/windows/desktop/ms632646%28v=vs.85%29.aspx
 	_OnSize(wParam, lParam, msg, hwnd){
 		; ToDo: Need to check if hwnd matches this._hwnd ?
-		static SIZE_RESTORED := 0, SIZE_MINIMIZED := 1, SIZE_MAXIMIZED := 2, SIZE_MAXSHOW := 3, SIZE_MAXHIDE := 4
+		static SIZE_RESTORED := 0+0, SIZE_MINIMIZED := 0+1, SIZE_MAXIMIZED := 0+2, SIZE_MAXSHOW := 0+3, SIZE_MAXHIDE := 0+4
 		
 		if (wParam = SIZE_RESTORED || wParam = SIZE_MAXIMIZED){
 			old := this._WindowRECT.clone()
@@ -712,11 +712,11 @@ class _CGui extends _CGuiBase {
 
 	; Handles mouse wheel messages
 	_OnWheel(wParam, lParam, msg, hwnd){
-		Static MK_SHIFT := 0x0004
-		Static SB_LINEMINUS := 0, SB_LINEPLUS := 1
-		Static WM_MOUSEWHEEL := 0x020A, WM_MOUSEHWHEEL := 0x020E
-		Static WM_HSCROLL := 0x0114, WM_VSCROLL := 0x0115
-		Static SB_HORZ := 0, SB_VERT := 1
+		Static MK_SHIFT := 0+0x0004
+		Static SB_LINEMINUS := 0+0, SB_LINEPLUS := 0+1
+		Static WM_MOUSEWHEEL := 0+0x020A, WM_MOUSEHWHEEL := 0+0x020E
+		Static WM_HSCROLL := 0+0x0114, WM_VSCROLL := 0+0x0115
+		Static SB_HORZ := 0+0, SB_VERT := 0+1
 		Critical
 
 		MSG := (Msg = WM_MOUSEWHEEL ? WM_VSCROLL : WM_HSCROLL)
@@ -866,7 +866,7 @@ class _CGui extends _CGuiBase {
 		
 		; Override to hook into change event independently of g-labels
 		OnChange(){
-			
+			a := 1
 		}
 	}
 
@@ -957,7 +957,7 @@ class _CGuiBase {
 	
 	; Sets the Window RECT.
 	_GuiSetWindowRECT(wParam := 0, lParam := 0, msg := 0, hwnd := 0){
-		Static SB_HORZ := 0, SB_VERT := 1
+		Static SB_HORZ := 0+0, SB_VERT := 0+1
 		if (this._type = "w"){
 			; WinGetPos is relative to the SCREEN
 			frame := DllCall("GetParent", "Uint", this._hwnd)
@@ -994,7 +994,6 @@ class _CGuiBase {
 				POINT := this._DLL_ScreenToClient(this._parent._hwnd, RECT.Left, RECT.Top)
 				ScrollInfo := this._parent._DLL_GetScrollInfo(SB_VERT)
 				
-				MsgBox % Type(SB_HORZ)
 				x_offset := this._parent._ScrollInfos[SB_HORZ].nPos
 				y_offset := this._parent._ScrollInfos[SB_VERT].nPos
 				PosX := POINT.x  + x_offset
