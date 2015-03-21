@@ -862,7 +862,7 @@ class _CGui extends _CGuiBase {
 			;}
 			
 			; Call bound function if present
-			if (ObjHasKey(this,"_glabel")){
+			if (ObjHasKey(this,"_glabel") && this._glabel != 0){
 				;(this._glabel).()
 				%this._glabel%()
 			}
