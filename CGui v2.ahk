@@ -188,13 +188,9 @@ class _CGui extends _CGuiBase {
 			; Options
 			o := SubStr(cmd,2,1)
 			if (o = "g"){
-				; Emulate G-Labels whilst also allowing seperate OnChange event to be Extended (For Saving settings in INI etc)
 				; Bind g-label to _glabel property
 				fn := Param3.Bind(this)
 				ctrl._glabel := fn
-				; Bind glabel event to _OnChange method
-				fn := ctrl._OnChange.bind(ctrl)
-				GuiControl % cmd, % ctrl._hwnd, % fn
 				return this
 			}
 		} else {
@@ -814,10 +810,18 @@ class _CGui extends _CGuiBase {
 			;this._parent.Gui("add", ctrltype, "hwndhwnd " options
 			this._hwnd := hwnd
 			
+			; Hook into OnChange event
+			fn := this._OnChange.bind(this)
+			GuiControl % "+g", % this._hwnd, % fn
+
+			; Add self to parent's list of GuiControls
+			this._parent._ChildControls[this._hwnd] := this
+
+			; Set up RECTs for scrollbars
 			this._WindowRECT := new this.RECT()
 			this._GuiSetWindowRECT()
 			
-			this._parent._ChildControls[this._hwnd] := this
+			; Tell parent to adjust scrollbars
 			this._parent._GuiChildChangedRange(this, this._WindowRECT)
 
 		}
@@ -855,15 +859,10 @@ class _CGui extends _CGuiBase {
 		
 		_OnChange(){
 			; Provide hook into change event
-			;if (isfunc(this.OnChange)){
-				; ToDo - why do I need this conditional with v2? Conditional not needed with v1...
-				; ... plus there should never be a case when _OnChange exists but OnChange does not!
-				this.OnChange()
-			;}
+			this.OnChange()
 			
 			; Call bound function if present
 			if (ObjHasKey(this,"_glabel") && this._glabel != 0){
-				;(this._glabel).()
 				%this._glabel%()
 			}
 		}
