@@ -1,7 +1,7 @@
 # CGui
 A wrapper for AHK's GUI functionality, Experimental!
 
-**Requires AHK >= 1.1.20.00**
+**Requires AHK >= 1.1.20.00 or >= 2.0.a063**
 
 ##What?
 #####Does it do?
