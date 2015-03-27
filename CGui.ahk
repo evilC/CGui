@@ -82,7 +82,7 @@ class _CGui extends _CGuiBase {
 	; ========================================== GUI COMMAND WRAPPERS =============================
 	; Equivalent to Gui, New
 	__New(parent := 0, options := 0, aParams*){
-		Static SB_HORZ := 0, SB_VERT = 1
+		Static SB_HORZ := 0, SB_VERT := 1
 		static WM_MOVE := 0x0003, WM_SIZE := 0x0005
 		static WM_HSCROLL := 0x0114, WM_VSCROLL := 0x0115
 		Static WM_MOUSEWHEEL := 0x020A, WM_MOUSEHWHEEL := 0x020E
@@ -189,13 +189,9 @@ class _CGui extends _CGuiBase {
 			; Options
 			o := SubStr(cmd,2,1)
 			if (o = "g"){
-				; Emulate G-Labels whilst also allowing seperate OnChange event to be Extended (For Saving settings in INI etc)
 				; Bind g-label to _glabel property
 				fn := Param3.Bind(this)
 				ctrl._glabel := fn
-				; Bind glabel event to _OnChange method
-				fn := ctrl._OnChange.bind(ctrl)
-				GuiControl % cmd, % ctrl._hwnd, % fn
 				return this
 			}
 		} else {
@@ -343,7 +339,7 @@ class _CGui extends _CGuiBase {
 	
 	; Set the POSITION component of a scrollbar
 	_GuiSetScrollbarPos(nTrackPos, bar){
-		Static SB_HORZ := 0, SB_VERT = 1
+		Static SB_HORZ := 0, SB_VERT := 1
 		static SIF_POS := 0x4
 		
 		this._ScrollInfos[bar].fMask := SIF_POS
@@ -356,7 +352,7 @@ class _CGui extends _CGuiBase {
 	; bars = 1 = SB_VERT
 	; bars = 2 (or omit bars) = both bars
 	_GuiSetScrollbarSize(bars := 2, PageRECT := 0, RangeRECT := 0, mode := "b"){
-		Static SB_HORZ := 0, SB_VERT = 1
+		Static SB_HORZ := 0, SB_VERT := 1
 		static SIF_DISABLENOSCROLL := 0x8
 		static SIF_RANGE := 0x1, SIF_PAGE := 0x2, SIF_POS := 0x4, SIF_ALL := 0x17
 		; Index Min / Max property names of a RECT by SB_HORZ = 0, SB_VERT = 1
@@ -571,7 +567,7 @@ class _CGui extends _CGuiBase {
 		; WM_HSCROLL https://msdn.microsoft.com/en-gb/library/windows/desktop/bb787575(v=vs.85).aspx
 		Critical
 		static WM_HSCROLL := 0x0114, WM_VSCROLL := 0x0115
-		Static SB_HORZ := 0, SB_VERT = 1
+		Static SB_HORZ := 0, SB_VERT := 1
 		static SB_LINEUP := 0x0, SB_LINEDOWN := 0x1, SB_PAGEUP := 0x2, SB_PAGEDOWN := 0x3, SB_THUMBPOSITION := 0x4, SB_THUMBTRACK := 0x5, SB_TOP := 0x6, SB_BOTTOM := 0x7, SB_ENDSCROLL := 0x8 
 		
 		if (msg = WM_HSCROLL || msg = WM_VSCROLL){
@@ -708,7 +704,7 @@ class _CGui extends _CGuiBase {
 		Static SB_LINEMINUS := 0, SB_LINEPLUS := 1
 		Static WM_MOUSEWHEEL := 0x020A, WM_MOUSEHWHEEL := 0x020E
 		Static WM_HSCROLL := 0x0114, WM_VSCROLL := 0x0115
-		Static SB_HORZ := 0, SB_VERT = 1
+		Static SB_HORZ := 0, SB_VERT := 1
 		Critical
 
 		MSG := (Msg = WM_MOUSEWHEEL ? WM_VSCROLL : WM_HSCROLL)
@@ -804,11 +800,19 @@ class _CGui extends _CGuiBase {
 			Gui, % this._parent.PrefixHwnd("Add"), % ctrltype, % "hwndhwnd " options, % text
 			;this._parent.Gui("add", ctrltype, "hwndhwnd " options
 			this._hwnd := hwnd
-			
+
+			; Hook into OnChange event
+			fn := this._OnChange.bind(this)
+			GuiControl % "+g", % this._hwnd, % fn
+
+			; Add self to parent's list of GuiControls
+			this._parent._ChildControls[this._hwnd] := this
+
+			; Set up RECTs for scrollbars
 			this._WindowRECT := new this.RECT()
 			this._GuiSetWindowRECT()
 			
-			this._parent._ChildControls[this._hwnd] := this
+			; Tell parent to adjust scrollbars
 			this._parent._GuiChildChangedRange(this, this._WindowRECT)
 
 		}
@@ -849,7 +853,7 @@ class _CGui extends _CGuiBase {
 			this.OnChange()
 			
 			; Call bound function if present
-			if (ObjHasKey(this,"_glabel")){
+			if (ObjHasKey(this,"_glabel") && this._glabel != 0){
 				(this._glabel).()
 			}
 		}
@@ -893,7 +897,7 @@ class _CGuiBase {
 			}
 		}
 		
-		__Set(aParam = "", aValue := ""){
+		__Set(aParam := "", aValue := ""){
 			static keys := {Top: 1, Left: 1, Bottom: 1, Right: 1}
 			
 			if (aParam = ""){
@@ -947,7 +951,7 @@ class _CGuiBase {
 	
 	; Sets the Window RECT.
 	_GuiSetWindowRECT(wParam := 0, lParam := 0, msg := 0, hwnd := 0){
-		Static SB_HORZ := 0, SB_VERT = 1
+		Static SB_HORZ := 0, SB_VERT := 1
 		if (this._type = "w"){
 			; WinGetPos is relative to the SCREEN
 			frame := DllCall("GetParent", "Uint", this._hwnd)
